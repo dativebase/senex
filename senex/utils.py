@@ -26,6 +26,23 @@ def get_old_version(params):
     return ''
 
 
+def get_mysql_installed():
+    stdout = shell(['mysql', '-V'])
+    if 'Distrib' in stdout.strip():
+        return True
+    return False
+
+
+def get_mysql_version():
+    stdout = shell(['mysql', '-V'])
+    if 'Distrib' in stdout.strip():
+        try:
+            return stdout.split()[4].replace(',', '')
+        except:
+            return ''
+    return ''
+
+
 def get_easy_install_version(params):
     stdout = shell(['easy_install', '--version']).decode('utf-8')
     if stdout.strip():
@@ -145,6 +162,11 @@ def get_python_version():
 
 def get_dependencies(params):
 
+    mysql_installed = get_mysql_installed()
+    mysql_version = ''
+    if mysql_installed:
+        mysql_version = get_mysql_version()
+
     old_installed_resp = old_installed(params)
     old_version = ''
     if old_installed_resp:
@@ -201,6 +223,12 @@ def get_dependencies(params):
             'name': 'OLD',
             'installed': old_installed_resp,
             'version': old_version
+        },
+
+        {
+            'name': 'MySQL',
+            'installed': mysql_installed,
+            'version': mysql_version
         },
 
         {
