@@ -20,6 +20,10 @@
               <td>Server OS Version</td>
               <td>${server['os_version']}</td>
             </tr>
+            <tr>
+              <td>Available RAM</td>
+              <td>${server['ram']}</td>
+            </tr>
           </tbody>
         </table>
 

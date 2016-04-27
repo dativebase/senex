@@ -88,6 +88,51 @@ def get_platform_version():
         return platform.release()
 
 
+def get_available_memory():
+    if platform.system() == 'Darwin':
+        stdout = shell(['sysctl', 'hw.memsize'])
+        if stdout.strip():
+            try:
+                resp = stdout.strip()
+                return pretty_print_bytes(int(resp.split()[1]))
+            except:
+                return ''
+        return ''
+    else:
+        return ''
+
+
+def pretty_print_bytes(num_bytes):
+    """Print an integer byte count to human-readable form.
+    """
+    if num_bytes is None:
+        return 'File size unavailable.'
+    KiB = 1024
+    MiB = KiB * KiB
+    GiB = KiB * MiB
+    TiB = KiB * GiB
+    PiB = KiB * TiB
+    EiB = KiB * PiB
+    ZiB = KiB * EiB
+    YiB = KiB * ZiB
+    if num_bytes > YiB:
+        return '%.3g YiB' % (num_bytes / YiB)
+    elif num_bytes > ZiB:
+        return '%.3g ZiB' % (num_bytes / ZiB)
+    elif num_bytes > EiB:
+        return '%.3g EiB' % (num_bytes / EiB)
+    elif num_bytes > PiB:
+        return '%.3g PiB' % (num_bytes / PiB)
+    elif num_bytes > TiB:
+        return '%.3g TiB' % (num_bytes / TiB)
+    elif num_bytes > GiB:
+        return '%.3g GiB' % (num_bytes / GiB)
+    elif num_bytes > MiB:
+        return '%.3g MiB' % (num_bytes / MiB)
+    elif num_bytes > KiB:
+        return '%.3g KiB' % (num_bytes / KiB)
+
+
 def apache_installed():
     if platform.system() == 'Darwin':
         return bool(which('apachectl'))
@@ -148,7 +193,7 @@ def get_server():
         'os': get_platform(),
         'os_version': get_platform_version(),
         'disk_space_available': None,
-        'ram': None
+        'ram': get_available_memory()
         }
 
 
