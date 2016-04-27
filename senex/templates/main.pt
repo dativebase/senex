@@ -1,0 +1,75 @@
+<metal:macro use-macro="master">
+  <metal:slot fill-slot="body">
+      <p>Senex is the administrative tool for the <a
+        href="http://www.onlinelinguisticdatabase.org">OLD</a>. With
+        Senex, you can install the Online Linguistic Database and its
+        dependencies, create new OLD instances, and turn existing OLDs
+        on and off.
+      </p>
+
+      <div tal:condition="logged_in">
+
+        <h2>Server</h2>
+        <table class="info-table server-stats">
+          <tbody>
+            <tr>
+              <td>Server OS</td>
+              <td>${server['os']}</td>
+            </tr>
+            <tr>
+              <td>Server OS Version</td>
+              <td>${server['os_version']}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Dependencies</h2>
+        <table class="info-table dependencies">
+          <thead>
+            <tr>
+              <th>Dependency</th>
+              <th>Version</th>
+              <th>Installed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr tal:repeat="dep dependencies">
+              <td tal:content="dep.name"></td>
+              <td tal:content="dep.version"></td>
+              <td tal:switch="dep.installed">
+                <div tal:case="True"><i class="ok fa fa-check-circle"></i></div>
+                <div tal:case="False"><i class="error fa fa-times-circle"></i></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div tal:condition="logged_in">
+        <h2>OLD Instances</h2>
+        <table class="info-table olds-summary">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Human-readable Name</th>
+              <th>Running</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr tal:repeat="old olds">
+              <td tal:content="old.name"></td>
+              <td tal:content="old.human_name"></td>
+              <td tal:content="old.running"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        <a tal:condition="logged_in" tal:attributes="href edit_url" href="">
+          Edit Senex
+        </a>
+      </p>
+  </metal:slot>
+</metal:macro>
+

@@ -1,0 +1,25 @@
+<metal:macro use-macro="master">
+  <metal:slot fill-slot="body">
+    <p tal:condition="logged_in" class="pull-right">
+      <a href="${request.application_url}/logout">Logout</a>
+    </p>
+    <p>
+      Editing <strong><span tal:replace="old.name">OLD Name Goes
+      Here</span></strong>
+    </p>
+    <p>You can return to the
+      <a href="${request.application_url}">Senex main page</a>.
+    </p>
+    <form action="${save_url}" method="post">
+      <div class="form-group">
+        <label for="human_name">Human-friendly Name</label>
+        <textarea class="form-control" name="human_name"
+          tal:content="old.human_name" rows="1"
+          cols="60"></textarea>
+      </div>
+      <div class="form-group">
+        <button type="submit" name="form.submitted" value="Save" class="btn btn-default">Save</button>
+      </div>
+    </form>
+  </metal:slot>
+</metal:macro>
