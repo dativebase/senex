@@ -173,8 +173,31 @@ table.info-table td
   color: red;
 }
 
+.error-bk
+{
+  background-color: red;
+  display: inline-block;
+  border-radius: 5px;
+  padding: 0 3px;
+}
+
 .ok
 {
   color: green;
+}
+
+.ok-bk
+{
+  background-color: green;
+  display: inline-block;
+  border-radius: 5px;
+  padding: 0 3px;
+}
+
+i.big-icon
+{
+  font-size: 140pt;
+  margin: 0 auto;
+  display: table;
 }
 

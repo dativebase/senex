@@ -48,12 +48,15 @@ def view_main_page(request):
     if logged_in:
         olds = DBSession.query(OLD).all()
     params = {'env_dir': request.registry.settings['senex.env_dir']}
+    dependencies = get_dependencies(params)
+    old_installed = [d for d in dependencies if d['name'] == 'OLD'][0]['installed']
     return dict(
         edit_url=request.route_url('edit_senex'),
         logged_in=logged_in,
         olds=olds,
         server=get_server(),
-        dependencies=get_dependencies(params)
+        dependencies=dependencies,
+        old_installed=old_installed
         )
 
 # TODO: create an "Edit Senex" page.

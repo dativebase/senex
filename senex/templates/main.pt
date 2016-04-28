@@ -28,6 +28,20 @@
         </table>
 
         <h2>Dependencies</h2>
+        <ul>
+          <li tal:condition="old_installed">
+            <div class="ok-bk">
+              <i class="fa fa-check-circle"></i>&nbsp;OLD installed
+            </div>
+          </li>
+          <li tal:condition="not old_installed">
+            <div class="error-bk">
+              <i class="fa fa-times-circle"></i>&nbsp;OLD not installed
+            </div>
+          </li>
+          <li>${len([d for d in dependencies if d['installed']])} of
+            ${len(dependencies)} dependencies installed</li>
+        </ul>
         <table class="info-table dependencies">
           <thead>
             <tr>
