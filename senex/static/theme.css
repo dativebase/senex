@@ -201,3 +201,13 @@ i.big-icon
   display: table;
 }
 
+label.setting-label
+{
+  width: 18em;
+}
+
+div.setting-display
+{
+  display: inline-block;
+}
+

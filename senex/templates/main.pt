@@ -27,6 +27,15 @@
           </tbody>
         </table>
 
+        <h2>Settings</h2>
+        <ul>
+          <li tal:repeat="(setting, setting_value) sorted(settings.items())">
+            <label class="setting-label" for="${setting}"
+              >${setting_labels_human.get(setting, setting)}</label>
+            <div class="setting-display" name="${setting}">${setting_value}</div>
+          </li>
+        </ul>
+
         <h2>Dependencies</h2>
         <ul>
           <li tal:condition="old_installed">

@@ -34,9 +34,7 @@ def main(argv=sys.argv):
     DBSession.configure(bind=engine)
     Base.metadata.create_all(engine)
 
-    """
     with transaction.manager:
-        model = OLD(name='Sample OLD', running=False)
-        DBSession.add(model)
-    """
+        senex_state = SenexState()
+        DBSession.add(senex_state)
 

@@ -37,21 +37,36 @@ from .models import (
     )
 
 
-def create_new_state(params):
+setting_labels_human = {
+    'mysql_user': 'MySQL username',
+    'mysql_pwd': 'MySQL password',
+    'env_dir': 'Virtual Environment directory',
+    'apps_path': 'OLD Applications path',
+    'host': 'Host name',
+    'vh_path': 'Apache Virtual Hosts file path',
+    'ssl_crt_path': 'SSL Certificate .crt file path',
+    'ssl_key_path': 'SSL Certificate .key file path',
+    'ssl_pem_path': 'SSL Certificate .pem file path'
+    }
+
+def create_new_state(previous_state=None):
     """Create a new Senex state model in our db and return it as a 2-tuple of
     `server_state` and `dependency_state`.
 
     """
 
+    new_state = SenexState()
+    if previous_state:
+        for attr in new_state.settings_attrs:
+            setattr(new_state, attr, getattr(previous_state, attr))
     server_state = get_server()
-    dependency_state = get_dependencies(params)
-    senex_state = SenexState(
-        server_state = unicode(json.dumps(server_state)),
-        dependency_state = unicode(json.dumps(dependency_state)),
-        last_state_check = datetime.datetime.utcnow()
-        )
-    DBSession.add(senex_state)
-    return server_state, dependency_state
+    new_state_settings = new_state.get_settings()
+    dependency_state = get_dependencies(new_state_settings)
+    new_state.server_state = unicode(json.dumps(get_server()))
+    new_state.dependency_state = unicode(json.dumps(dependency_state))
+    new_state.last_state_check = datetime.datetime.utcnow()
+    DBSession.add(new_state)
+    return server_state, dependency_state, new_state_settings
 
 
 def state_stale_age():
@@ -71,13 +86,14 @@ def get_state(params):
     if senex_state:
         age = datetime.datetime.utcnow() - senex_state.last_state_check
         if age > state_stale_age():
-            server_state, dependency_state = create_new_state(params)
+            server_state, dependency_state, settings = create_new_state(senex_state)
         else:
             dependency_state = json.loads(senex_state.dependency_state)
             server_state = json.loads(senex_state.server_state)
+            settings = senex_state.get_settings()
     else:
-        server_state, dependency_state = create_new_state(params)
-    return server_state, dependency_state
+        server_state, dependency_state, settings = create_new_state()
+    return server_state, dependency_state, settings
 
 
 @subscriber(IBeforeRender)
@@ -100,7 +116,7 @@ def view_main_page(request):
     if logged_in:
         olds = DBSession.query(OLD).all()
     params = {'env_dir': request.registry.settings['senex.env_dir']}
-    server_state, dependency_state = get_state(params)
+    server_state, dependency_state, settings = get_state(params)
     old_installed = [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
     return dict(
         edit_url=request.route_url('edit_senex'),
@@ -108,6 +124,8 @@ def view_main_page(request):
         olds=olds,
         server=server_state,
         dependencies=dependency_state,
+        settings=settings,
+        setting_labels_human=setting_labels_human,
         old_installed=old_installed
         )
 

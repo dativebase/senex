@@ -30,7 +30,13 @@ rest of its requirements and the rest of the OLD's requirements on its own.
 TODO
 --------------------------------------------------------------------------------
 
-Create a bash install script for Senex itself.
+- Create a bash install script for Senex itself.
+
+- Add Python-crontab as a dependency in setup.py. From buildold:
+
+    Python-crontab (https://pypi.python.org/pypi/python-crontab) should be
+    installed if you want the OLD-restart cronjob to be created for you. But the
+    script will still work without it.
 
 
 Creating a Development Setup for Senex
