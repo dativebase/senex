@@ -82,16 +82,18 @@ def get_pil_version(params):
     return ''
 
 
-def get_platform():
+def get_os_and_version():
     _platform = platform.system()
-    return {'Darwin': 'Mac OS X'}.get(_platform, _platform)
-
-
-def get_platform_version():
-    if platform.system() == 'Darwin':
-        return platform.mac_ver()[0]
-    else:
-        return platform.release()
+    os = 'unknown'
+    os_version = 'unknown'
+    if _platform == 'Darwin':
+        os = 'Mac OS X'
+        os_version = platform.mac_ver()[0]
+    if _platform == 'Linux':
+        dist = platform.dist()[0]
+        os = '%s Linux' % dist[0]
+        os_version = dist[1]
+    return os, os_version
 
 
 def get_available_memory():
@@ -195,9 +197,10 @@ def libmagic_installed():
 
 
 def get_server():
+    os, os_version = get_os_and_version()
     return {
-        'os': get_platform(),
-        'os_version': get_platform_version(),
+        'os': os,
+        'os_version': os_version,
         'disk_space_available': None,
         'ram': get_available_memory()
         }
