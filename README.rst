@@ -36,31 +36,31 @@ Create a bash install script for Senex itself.
 Creating a Development Setup for Senex
 --------------------------------------------------------------------------------
 
-If you don't have Python setuptools installed in your system Python, install it.::
+If you don't have Python setuptools installed in your system Python, install it::
 
     $ sudo apt-get install python-setuptools
 
 If you don't have Python's virtualenv installed in your system Python, then
-install it using easy_install from setuptools.::
+install it using easy_install from setuptools::
 
     $ sudo easy_install virtualenv
 
-Create and activate a virtual environment.::
+Create and activate a virtual environment::
 
     $ virtualenv env
     $ source env/bin/activate
 
-Download the Senex repo and install its dependencies.::
+Download the Senex repo and install its dependencies::
 
     $ git clone https://github.com/jrwdunham/senex.git
     $ cd senex
     $ python setup.py develop
 
-Create Senex's database tables and serve it.::
+Create Senex's database tables and serve it::
 
     $ initialize_senex_db development.ini
     $ pserve development.ini
 
 
-..: _`Online Linguistic Database (OLD)`: `http://www.onlinelinguisticdatabase.org`
+.. _`Online Linguistic Database (OLD)`: http://www.onlinelinguisticdatabase.org
 
