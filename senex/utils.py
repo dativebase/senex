@@ -90,7 +90,7 @@ def get_os_and_version():
         os = 'Mac OS X'
         os_version = platform.mac_ver()[0]
     if _platform == 'Linux':
-        dist = platform.dist()[0]
+        dist = platform.dist()
         os = '%s Linux' % dist[0]
         os_version = dist[1]
     return os, os_version
