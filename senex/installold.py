@@ -318,7 +318,10 @@ def old_installed(params):
 
     """
 
-    stdout = shell([get_python_path(params), '-c', 'import onlinelinguisticdatabase'])
+    python_path = get_python_path(params)
+    if not os.path.isfile(python_path):
+        return False
+    stdout = shell([python_path, '-c', 'import onlinelinguisticdatabase'])
     if stdout.strip():
         return False
     return True
@@ -329,7 +332,10 @@ def importlib_installed(params):
 
     """
 
-    stdout = shell([get_python_path(params), '-c', 'import importlib'])
+    python_path = get_python_path(params)
+    if not os.path.isfile(python_path):
+        return False
+    stdout = shell([python_path, '-c', 'import importlib'])
     if stdout.strip():
         return False
     return True
@@ -340,7 +346,10 @@ def mysql_python_installed(params):
 
     """
 
-    stdout = shell([get_python_path(params), '-c', 'import MySQLdb'])
+    python_path = get_python_path(params)
+    if not os.path.isfile(python_path):
+        return False
+    stdout = shell([python_path, '-c', 'import MySQLdb'])
     if stdout.strip():
         return False
     return True
@@ -351,7 +360,10 @@ def pil_installed(params):
 
     """
 
-    stdout = shell([get_python_path(params), '-c', 'import Image'])
+    python_path = get_python_path(params)
+    if not os.path.isfile(python_path):
+        return False
+    stdout = shell([python_path, '-c', 'import Image'])
     if stdout.strip():
         return False
     return True
