@@ -97,12 +97,24 @@ def get_os_and_version():
 
 
 def get_available_memory():
-    if platform.system() == 'Darwin':
+    system = platform.system()
+    if system == 'Darwin':
         stdout = shell(['sysctl', 'hw.memsize'])
         if stdout.strip():
             try:
                 resp = stdout.strip()
                 return pretty_print_bytes(int(resp.split()[1]))
+            except:
+                return ''
+        return ''
+    elif system == 'Linux':
+        stdout = shell(['free', '-b'])
+        if stdout.strip():
+            try:
+                resp = stdout.strip()
+                for line in resp.split('\n'):
+                    if line.startswith('Swap:'):
+                        return pretty_print_bytes(int(line.split()[1]))
             except:
                 return ''
         return ''
