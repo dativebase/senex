@@ -20,9 +20,11 @@ def get_old_version(params):
 
     stmts = ('import onlinelinguisticdatabase;'
         'print getattr(onlinelinguisticdatabase, "__version__", "")')
-    stdout = shell([get_python_path(params), '-c', stmts])
-    if stdout.strip():
-        return stdout.strip()
+    python_path = get_python_path(params)
+    if os.path.isfile(python_path):
+        stdout = shell([python_path, '-c', stmts])
+        if stdout.strip():
+            return stdout.strip()
     return ''
 
 
@@ -62,17 +64,21 @@ def get_virtualenv_version(params):
 
 def get_mysql_python_version(params):
     stmts = 'import MySQLdb; print MySQLdb.__version__'
-    stdout = shell([get_python_path(params), '-c', stmts])
-    if stdout.strip():
-        return stdout.strip()
+    python_path = get_python_path(params)
+    if os.path.isfile(python_path):
+        stdout = shell([python_path, '-c', stmts])
+        if stdout.strip():
+            return stdout.strip()
     return ''
 
 
 def get_pil_version(params):
     stmts = 'import Image; print Image.VERSION'
-    stdout = shell([get_python_path(params), '-c', stmts])
-    if stdout.strip():
-        return stdout.strip()
+    python_path = get_python_path(params)
+    if os.path.isfile(python_path):
+        stdout = shell([python_path, '-c', stmts])
+        if stdout.strip():
+            return stdout.strip()
     return ''
 
 
