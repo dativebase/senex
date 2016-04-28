@@ -213,7 +213,7 @@ def get_server():
     return {
         'os': os,
         'os_version': os_version,
-        'disk_space_available': None,
+        # 'disk_space_available': None,
         'ram': get_available_memory()
         }
 
@@ -227,6 +227,12 @@ def get_python_version():
 
 
 def get_dependencies(params):
+    """Inspect the server via various subprocess calls and introspection of the
+    Python installation in our OLD virtual environment and return an array of
+    objects representing our OLD dependencies and whether they are installed,
+    including the version numbers, if possible, of installed dependencies.
+
+    """
 
     mysql_installed = get_mysql_installed()
     mysql_version = ''

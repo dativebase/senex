@@ -1,6 +1,8 @@
 import cgi
 import re
 import pprint
+import json
+import datetime
 
 from .utils import (
     get_server,
@@ -31,14 +33,64 @@ from .security import USERS
 from .models import (
     DBSession,
     OLD,
+    SenexState,
     )
+
+
+def create_new_state(params):
+    """Create a new Senex state model in our db and return it as a 2-tuple of
+    `server_state` and `dependency_state`.
+
+    """
+
+    server_state = get_server()
+    dependency_state = get_dependencies(params)
+    senex_state = SenexState(
+        server_state = unicode(json.dumps(server_state)),
+        dependency_state = unicode(json.dumps(dependency_state)),
+        last_state_check = datetime.datetime.utcnow()
+        )
+    DBSession.add(senex_state)
+    return server_state, dependency_state
+
+
+def state_stale_age():
+    return datetime.timedelta(minutes=5)
+
+
+def get_state(params):
+    """Return the state of the server, i.e., its server stats (like OS and
+    version) as well as the state of our OLD dependency installation. We return
+    a cached value from the db if we've checked the actual state recently. If
+    our state data are stale, we refresh them.
+
+    """
+
+    senex_state = DBSession.query(SenexState)\
+        .order_by(SenexState.id.desc()).first()
+    if senex_state:
+        age = datetime.datetime.utcnow() - senex_state.last_state_check
+        if age > state_stale_age():
+            server_state, dependency_state = create_new_state(params)
+        else:
+            dependency_state = json.loads(senex_state.dependency_state)
+            server_state = json.loads(senex_state.server_state)
+    else:
+        server_state, dependency_state = create_new_state(params)
+    return server_state, dependency_state
 
 
 @subscriber(IBeforeRender)
 def globals_factory(event):
+    """This gives the master Chameleon template to all of our other templates
+    so they can just fill in its slots and everything can be DRY.
+
+    """
+
     master = get_renderer('templates/master.pt').implementation()
     event['master'] = master
     event['logged_in'] = False
+
 
 @view_config(route_name='view_main_page', renderer='templates/main.pt',
     permission='view')
@@ -48,14 +100,14 @@ def view_main_page(request):
     if logged_in:
         olds = DBSession.query(OLD).all()
     params = {'env_dir': request.registry.settings['senex.env_dir']}
-    dependencies = get_dependencies(params)
-    old_installed = [d for d in dependencies if d['name'] == 'OLD'][0]['installed']
+    server_state, dependency_state = get_state(params)
+    old_installed = [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
     return dict(
         edit_url=request.route_url('edit_senex'),
         logged_in=logged_in,
         olds=olds,
-        server=get_server(),
-        dependencies=dependencies,
+        server=server_state,
+        dependencies=dependency_state,
         old_installed=old_installed
         )
 
