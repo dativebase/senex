@@ -13,6 +13,32 @@ from .installold import (
     )
 
 
+def validate_mysql_credentials(params):
+    """Check if we can actually access MySQL with the provided credentials;
+    also check if we have sufficient privileges to do what we need to do.
+
+    WARNING: requiring that the output to 'SHOW GRANTS;' contain "GRANT ALL
+    PRIVILEGES ON *.* TO '<mysql-user>'" might be too stringent.
+
+    """
+
+    if not params.get('mysql_user') or not params.get('mysql_pwd'):
+        return ('A MySQL username and password must be provided in order to'
+            ' create and manage OLDs.')
+    mysql_show_grants = Popen(['mysql', '-u', params['mysql_user'],
+        '-p%s' % params['mysql_pwd'], '-e', 'show grants;'], stdout=PIPE,
+        stderr=STDOUT)
+    stdout, stderr = mysql_show_grants.communicate()
+    if 'Access denied' in stdout:
+        return ('Sorry, we cannot access MySQL with user %s and the provided'
+            ' password.' % params['mysql_user'])
+    elif "GRANT ALL PRIVILEGES ON *.* TO '%s'" % params['mysql_user'] not in stdout:
+        return ('Sorry, user %s does not have sufficient MySQL privileges to'
+            ' build an OLD.' % params['mysql_user'])
+    else:
+        return None
+
+
 def get_old_version(params):
     """Return the version of the installed OLD, if possible.
 
@@ -298,9 +324,21 @@ def get_dependencies(params):
         },
 
         {
+            'name': 'Apache',
+            'installed': apache_installed_resp,
+            'version': apache_version
+        },
+
+        {
             'name': 'MySQL',
             'installed': mysql_installed,
             'version': mysql_version
+        },
+
+        {
+            'name': 'MySQL-python',
+            'installed': mysql_python_installed_resp,
+            'version': mysql_python_version
         },
 
         {
@@ -316,21 +354,9 @@ def get_dependencies(params):
         },
 
         {
-            'name': 'MySQL-python',
-            'installed': mysql_python_installed_resp,
-            'version': mysql_python_version
-        },
-
-        {
             'name': 'importlib',
             'installed': importlib_installed(params),
             'version': None
-        },
-
-        {
-            'name': 'Apache',
-            'installed': apache_installed_resp,
-            'version': apache_version
         },
 
         {

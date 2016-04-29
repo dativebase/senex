@@ -1,80 +1,17 @@
 <metal:macro use-macro="master">
   <metal:slot fill-slot="body">
-      <p>Senex is the administrative tool for the <a
-        href="http://www.onlinelinguisticdatabase.org">OLD</a>. With
-        Senex, you can install the Online Linguistic Database and its
-        dependencies, create new OLD instances, and turn existing OLDs
-        on and off.
+
+      <p>Senex is a high-level administrative tool for the <a
+        href="http://www.onlinelinguisticdatabase.org">Online Linguistic
+        Database (OLD)</a>. With Senex, you can create and destroy OLDs
+        and turn existing ones on and off. You can also use Senex to install
+        the OLD and its dependencies,
       </p>
 
       <div tal:condition="logged_in">
 
-        <h2>Server</h2>
-        <table class="info-table server-stats">
-          <tbody>
-            <tr>
-              <td>Server OS</td>
-              <td>${server['os']}</td>
-            </tr>
-            <tr>
-              <td>Server OS Version</td>
-              <td>${server['os_version']}</td>
-            </tr>
-            <tr>
-              <td>Available RAM</td>
-              <td>${server['ram']}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h2>Settings</h2>
-        <ul>
-          <li tal:repeat="(setting, setting_value) sorted(settings.items())">
-            <label class="setting-label" for="${setting}"
-              >${setting_labels_human.get(setting, setting)}</label>
-            <div class="setting-display" name="${setting}">${setting_value}</div>
-          </li>
-        </ul>
-
-        <h2>Dependencies</h2>
-        <ul>
-          <li tal:condition="old_installed">
-            <div class="ok-bk">
-              <i class="fa fa-check-circle"></i>&nbsp;OLD installed
-            </div>
-          </li>
-          <li tal:condition="not old_installed">
-            <div class="error-bk">
-              <i class="fa fa-times-circle"></i>&nbsp;OLD not installed
-            </div>
-          </li>
-          <li>${len([d for d in dependencies if d['installed']])} of
-            ${len(dependencies)} dependencies installed</li>
-        </ul>
-        <table class="info-table dependencies">
-          <thead>
-            <tr>
-              <th>Dependency</th>
-              <th>Version</th>
-              <th>Installed</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr tal:repeat="dep dependencies">
-              <td tal:content="dep.name"></td>
-              <td tal:content="dep.version"></td>
-              <td tal:switch="dep.installed">
-                <div tal:case="True"><i class="ok fa fa-check-circle"></i></div>
-                <div tal:case="False"><i class="error fa fa-times-circle"></i></div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div tal:condition="logged_in">
         <h2>OLD Instances</h2>
-        <table class="info-table olds-summary">
+        <table tal:condition="len(olds) > 0" class="info-table olds-summary">
           <thead>
             <tr>
               <th>Name</th>
@@ -90,13 +27,149 @@
             </tr>
           </tbody>
         </table>
+        <p tal:condition="len(olds) == 0">Senex has no record of any OLDs
+        currently installed on this server.</p>
+
+        <h2>Server</h2>
+        <ul>
+          <li tal:condition="bool(warnings.get('server'))">
+            <div class="error-bk">
+              <i class="fa fa-exclamation-triangle"></i>&nbsp;Warning: ${warnings['server']}
+            </div>
+          </li>
+          <li>
+            <label class="setting-label" for="os">Server OS</label>
+            <div class="setting-display" name="os">${server['os']}</div>
+          </li>
+          <li>
+            <label class="setting-label" for="os_version">Server OS Version</label>
+            <div class="setting-display" name="os_version">${server['os_version']}</div>
+          </li>
+          <li>
+            <label class="setting-label" for="os">Total RAM</label>
+            <div class="setting-display" name="os">${server['ram']}</div>
+          </li>
+        </ul>
+
+        <div class="display-settings-div">
+          <h2>Settings</h2>
+          <a class="show-settings-edit-form" href="javascript:void(0)">Edit</a>
+          &nbsp;
+          <a href="${validate_settings_url}">Validate</a>
+          <p>Senex's settings determine where on your server the OLD is
+          installed, what domain your OLDs will be served at, and other
+          details. <span class="senex-warning">Warning: do not change
+          these settings unless you are sure you know what you are
+          doing.</span></p>
+
+          <ul>
+            <li tal:condition="bool(warnings.get('settings'))">
+              <div class="error-bk">
+                <i class="fa fa-exclamation-triangle"></i>
+                &nbsp;Warning: ${warnings['settings']}
+              </div>
+            </li>
+            <li tal:repeat="(setting, setting_value) sorted(settings.items())">
+              <label class="setting-label" for="${setting}" data-toggle="tooltip"
+                title="${setting_tooltips.get(setting, '')}"
+                >${setting_labels_human.get(setting, setting)}</label>
+              <div class="setting-display" name="${setting}">${setting_value}</div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="edit-settings-div" style="display: none;">
+          <h2>Edit Settings</h2>
+          <a class="show-settings-display" href="javascript:void(0)">View</a>
+          <form action="${edit_settings_url}" method="post">
+            <div tal:repeat="(setting, setting_value) sorted(settings.items())"
+              class="form-group">
+              <label class="setting-label" data-toggle="tooltip"
+                title="${setting_tooltips.get(setting, '')}"
+                for="${setting}"
+                >${setting_labels_human.get(setting, setting)}</label>
+              <input class="form-control" name="${setting}"
+                value="${setting_value}"></input>
+            </div>
+            <input type="hidden" name="edit.settings" value="True"></input>
+            <div class="form-group">
+              <button type="submit" name="form.submitted" value="Save"
+                class="btn btn-default">Save</button>
+            </div>
+          </form>
+        </div>
+
+        <h2>Dependencies</h2>
+        <ul>
+          <li tal:condition="old_installed">
+            <div class="ok-bk">
+              <i class="fa fa-check-circle"></i>&nbsp;OLD installed
+            </div>
+          </li>
+          <li tal:condition="not old_installed">
+            <div class="error-bk">
+              <i class="fa fa-exclamation-triangle"></i>&nbsp;OLD not installed
+            </div>
+          </li>
+          <li tal:condition="not bool(warnings.get('core_dependencies'))">
+            <div class="ok-bk">
+              <i class="fa fa-check-circle"></i>&nbsp; All core dependencies installed
+            </div>
+          </li>
+          <li tal:condition="bool(warnings.get('core_dependencies'))">
+            <div class="error-bk">
+              <i class="fa fa-exclamation-triangle"></i>
+              &nbsp;Warning: ${warnings['core_dependencies']}
+            </div>
+          </li>
+        </ul>
+
+        <h3>Core Dependencies</h3>
+        <table class="info-table dependencies">
+          <thead>
+            <tr>
+              <th>Dependency</th>
+              <th>Version</th>
+              <th>Installed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr tal:repeat="dep core_dependencies">
+              <td tal:content="dep.name"></td>
+              <td tal:content="dep.version"></td>
+              <td tal:switch="dep.installed">
+                <div tal:case="True"><i class="ok fa fa-check-circle"></i></div>
+                <div tal:case="False"><i class="error fa fa-times-circle"></i></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Soft Dependencies</h3>
+        <table class="info-table dependencies">
+          <thead>
+            <tr>
+              <th>Dependency</th>
+              <th>Version</th>
+              <th>Installed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr tal:repeat="dep soft_dependencies">
+              <td tal:content="dep.name"></td>
+              <td tal:content="dep.version"></td>
+              <td tal:switch="dep.installed">
+                <div tal:case="True"><i class="ok fa fa-check-circle"></i></div>
+                <div tal:case="False"><i class="error fa fa-times-circle"></i></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
       </div>
 
-      <p>
-        <a tal:condition="logged_in" tal:attributes="href edit_url" href="">
-          Edit Senex
-        </a>
-      </p>
+      <div style="height: 2em;"></div>
+
   </metal:slot>
 </metal:macro>
 

@@ -3,10 +3,12 @@ import re
 import pprint
 import json
 import datetime
+import os
 
 from .utils import (
     get_server,
-    get_dependencies
+    get_dependencies,
+    validate_mysql_credentials
     )
 
 from pyramid.httpexceptions import (
@@ -37,6 +39,7 @@ from .models import (
     )
 
 
+# Human-readable settings labels.
 setting_labels_human = {
     'mysql_user': 'MySQL username',
     'mysql_pwd': 'MySQL password',
@@ -48,6 +51,38 @@ setting_labels_human = {
     'ssl_key_path': 'SSL Certificate .key file path',
     'ssl_pem_path': 'SSL Certificate .pem file path'
     }
+
+# Tooltips (i.e., title values) for Senex's settings.
+setting_tooltips = {
+    'mysql_user': ('The username of a MySQL user that can create, alter and'
+        ' drop databases and tables.'),
+    'mysql_pwd': 'The password corresponding to the MySQL username.',
+    'env_dir': ('The name of the directory (in your user\'s home directory)'
+        ' where the Python virtual environment will be, or has been, created.'
+        ' Where the OLD and its Python dependencies are installed.'),
+    'apps_path': ('The full path to the directory which contains a directory'
+        ' for each installed OLD.'),
+    'host': ('The host name of the URL at which the OLDs will be served, e.g.,'
+        ' www.myoldurl.com. OLDs will be served at a path relative to this'
+        ' host.'),
+    'vh_path': ('The full path to the Apache virtual hosts file for proxying'
+        ' requests to specific OLDs.'),
+    'ssl_crt_path': 'The full path to your SSL Certificate .crt file.',
+    'ssl_key_path': 'The full path to your SSL Certificate .key file.',
+    'ssl_pem_path': 'The full path to your SSL Certificate .pem file.'
+    }
+
+core_dependencies = (
+    'Python',
+    'OLD',
+    'MySQL',
+    'easy_install',
+    'virtualenv',
+    'MySQL-python',
+    'importlib',
+    'Apache'
+    )
+
 
 def create_new_state(previous_state=None):
     """Create a new Senex state model in our db and return it as a 2-tuple of
@@ -73,7 +108,11 @@ def state_stale_age():
     return datetime.timedelta(minutes=5)
 
 
-def get_state(params):
+def get_senex_state_model():
+    return DBSession.query(SenexState).order_by(SenexState.id.desc()).first()
+
+
+def get_state():
     """Return the state of the server, i.e., its server stats (like OS and
     version) as well as the state of our OLD dependency installation. We return
     a cached value from the db if we've checked the actual state recently. If
@@ -81,8 +120,7 @@ def get_state(params):
 
     """
 
-    senex_state = DBSession.query(SenexState)\
-        .order_by(SenexState.id.desc()).first()
+    senex_state = get_senex_state_model()
     if senex_state:
         age = datetime.datetime.utcnow() - senex_state.last_state_check
         if age > state_stale_age():
@@ -108,39 +146,123 @@ def globals_factory(event):
     event['logged_in'] = False
 
 
+def update_settings(request):
+    senex_state = get_senex_state_model()
+    new_senex_state = SenexState()
+    changed = False
+    for attr in new_senex_state.settings_attrs:
+        setattr(new_senex_state, attr, request.params[attr])
+        if getattr(senex_state, attr) != getattr(new_senex_state, attr):
+            changed = True
+    if changed:
+        new_state_settings = new_senex_state.get_settings()
+        dependency_state = get_dependencies(new_state_settings)
+        new_senex_state.server_state = unicode(json.dumps(get_server()))
+        new_senex_state.dependency_state = unicode(json.dumps(dependency_state))
+        new_senex_state.last_state_check = datetime.datetime.utcnow()
+        DBSession.add(new_senex_state)
+        return new_senex_state
+    else:
+        return senex_state
+
+
+def get_warnings(server_state, dependency_state, settings):
+    """Return a dict of warning messages if anything is wrong with the
+    passed-in state/settings.
+
+    """
+
+    warnings = {}
+
+    if (server_state.get('os') != 'Ubuntu Linux' or
+        server_state.get('os_version', '')[:5] not in ('14.04', '10.04')):
+        warnings['server'] = ('Senex is only known to work with Ubuntu Linux'
+            ' 14.04 and 10.04.')
+
+    for dependency in dependency_state:
+        if (dependency['name'] in core_dependencies and
+            not dependency['installed']):
+            warnings['core_dependencies'] = ('Some of the OLD\'s core'
+                ' dependencies are not installed.')
+            break
+
+    if not warnings.get('core_dependencies'):
+        try:
+            py_ver = [d for d in dependency_state if
+                d['name'] == 'Python'][0].get('version', '')
+            if py_ver.strip()[:3] not in ('2.6', '2.7'):
+                warnings['core_dependencies'] = ('The OLD only works with'
+                    ' Python 2.6 and 2.7')
+        except:
+            pass
+
+    return warnings
+
+
+def validate_settings(settings, warnings):
+    """Do some basic validation of Senex's settings and return the warnings
+    dict with new warnings, if there are settings validation issues.
+
+    TODOs:
+
+    - check if you can login with the MySQL credentials 'mysql_user' and
+      'mysql_pwd'
+      FOX
+
+    """
+
+    my_warnings = []
+    for ext in ('crt', 'key', 'pem'):
+        if (settings.get('ssl_%s_path' % ext) and
+            not os.path.isfile(settings['ssl_%s_path' % ext])):
+            my_warnings.append('There is no .%s file at the specified path.' % ext)
+    mysql_warning = validate_mysql_credentials(settings)
+    if mysql_warning:
+        my_warnings.append(mysql_warning)
+    if my_warnings:
+        warnings['settings'] = ' '.join(my_warnings)
+    return warnings
+
+
 @view_config(route_name='view_main_page', renderer='templates/main.pt',
     permission='view')
 def view_main_page(request):
-    logged_in=request.authenticated_userid
-    olds = []
+    logged_in = request.authenticated_userid
     if logged_in:
+        if ('form.submitted' in request.params and
+            'edit.settings' in request.params):
+            update_settings(request)
         olds = DBSession.query(OLD).all()
-    params = {'env_dir': request.registry.settings['senex.env_dir']}
-    server_state, dependency_state, settings = get_state(params)
-    old_installed = [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
-    return dict(
-        edit_url=request.route_url('edit_senex'),
-        logged_in=logged_in,
-        olds=olds,
-        server=server_state,
-        dependencies=dependency_state,
-        settings=settings,
-        setting_labels_human=setting_labels_human,
-        old_installed=old_installed
-        )
-
-# TODO: create an "Edit Senex" page.
-@view_config(route_name='edit_senex', renderer='templates/main.pt',
-    permission='edit')
-def edit_senex(request):
-    edit_url = request.route_url('edit_senex')
-    login_url = request.route_url('login')
-    logout_url = request.route_url('logout')
-    return dict(edit_url=edit_url, login_url=login_url)
+        server_state, dependency_state, settings = get_state()
+        warnings = get_warnings(server_state, dependency_state, settings)
+        if request.params.get('validate_settings') == 'true':
+            warnings = validate_settings(settings, warnings)
+        old_installed = [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
+        return dict(
+            edit_settings_url=request.route_url('view_main_page'),
+            validate_settings_url='%s?validate_settings=true' % request.route_url('view_main_page'),
+            logged_in=logged_in,
+            olds=olds,
+            server=server_state,
+            dependencies=dependency_state,
+            core_dependencies=[d for d in dependency_state if d['name'] in core_dependencies],
+            soft_dependencies=[d for d in dependency_state if d['name'] not in core_dependencies],
+            settings=settings,
+            setting_labels_human=setting_labels_human,
+            setting_tooltips=setting_tooltips,
+            old_installed=old_installed,
+            warnings=warnings
+            )
+    else:
+        return dict(logged_in=logged_in)
 
 @view_config(route_name='view_old', renderer='templates/view_old.pt',
     permission='view')
 def view_old(request):
+    """View a specific OLD.
+
+    """
+
     oldname = request.matchdict['oldname']
     old = DBSession.query(OLD).filter_by(name=oldname).first()
     if old is None:

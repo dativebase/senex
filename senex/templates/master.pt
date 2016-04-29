@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="senex">
     <meta name="author" content="Joel Dunham">
-    <link rel="shortcut icon" href="${request.static_url('senex:static/OLD-logo-196-x-199.png')}">
+    <link rel="shortcut icon" href="${request.static_url('senex:static/senex-logo-196.png')}">
 
     <title>Senex</title>
 
@@ -75,6 +75,7 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="//oss.maxcdn.com/libs/jquery/1.10.2/jquery.min.js"></script>
     <script src="//oss.maxcdn.com/libs/twitter-bootstrap/3.0.3/js/bootstrap.min.js"></script>
+    <script src="${request.static_url('senex:static/scripts.js')}"></script>
   </body>
 </html>
 

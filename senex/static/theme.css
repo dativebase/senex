@@ -74,7 +74,7 @@ p {
   font-weight: 400;
 }
 .starter-template .links ul li a, a {
-  color: grey;
+  color: #ffffff;
   text-decoration: underline;
 }
 .starter-template .links ul li a:hover, a:hover {
@@ -160,12 +160,27 @@ a.banner-anchor
   color: #ffffff;
 }
 
+a:visited
+{
+  color: #ffffff;
+}
+
+table.info-table
+{
+  margin-left: 2em;
+}
+
 table.info-table th,
 table.info-table td
 {
   padding-right: 2em;
   text-align: left;
   vertical-align: top;
+}
+
+li > div
+{
+  vertical-align: middle;
 }
 
 .error
@@ -179,6 +194,12 @@ table.info-table td
   display: inline-block;
   border-radius: 5px;
   padding: 0 3px;
+}
+
+li > .error-bk,
+li > .ok-bk
+{
+  margin: 2px 0;
 }
 
 .ok
@@ -201,6 +222,11 @@ i.big-icon
   display: table;
 }
 
+form.login-form .form-group label
+{
+  width: 7em;
+}
+
 label.setting-label
 {
   width: 18em;
@@ -209,5 +235,39 @@ label.setting-label
 div.setting-display
 {
   display: inline-block;
+}
+
+.floating-button-container
+{
+  position: relative;
+}
+
+.floating-button
+{
+  position: relative;
+}
+
+button.show-settings-edit-form
+{
+  top: -3em;
+  left: 9em;
+}
+
+button.show-settings-display
+{
+  top: -3em;
+  left: 14em;
+}
+
+@media (min-width: 767px) {
+  input.form-control {
+    display: inline-block;
+    width: 20em;
+  }
+}
+
+.senex-warning
+{
+  color: red;
 }
 

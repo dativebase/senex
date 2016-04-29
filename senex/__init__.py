@@ -19,7 +19,7 @@ def main(global_config, **settings):
     DBSession.configure(bind=engine)
     Base.metadata.bind = engine
     authn_policy = AuthTktAuthenticationPolicy(
-        'sosecret', callback=groupfinder, hashalg='sha512')
+        'blargon5', callback=groupfinder, hashalg='sha512', timeout=900)
     authz_policy = ACLAuthorizationPolicy()
     config = Configurator(settings=settings,
                           root_factory='senex.models.RootFactory')
@@ -31,7 +31,6 @@ def main(global_config, **settings):
     config.add_route('view_main_page', '/')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
-    config.add_route('edit_senex', '/edit')
 
     config.add_route('view_old', '/{oldname}')
     config.add_route('add_old', '/add/{oldname}')
