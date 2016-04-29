@@ -106,6 +106,7 @@ import datetime
 import tarfile
 from subprocess import Popen, PIPE, STDOUT
 
+from buildold import create_directory_safely
 
 # ANSI escape sequences for formatting command-line output.
 ANSI_HEADER = '\033[95m'
@@ -921,9 +922,16 @@ def install(params):
 
     """
 
+    print 'in install of installold'
+
     get_system_python_version()
+
+    create_directory_safely(get_tmp_path())
+    create_directory_safely(get_log_path())
     clear_log()
     clear_tmp()
+
+    #sys.exit('IN INSTALL OF INSTALLOLD SYS EXIT')
 
     # Core dependencies: these must be installed in order for the OLD to be
     # minimally functional.

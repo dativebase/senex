@@ -88,8 +88,12 @@
                 title="${setting_tooltips.get(setting, '')}"
                 for="${setting}"
                 >${setting_labels_human.get(setting, setting)}</label>
-              <input class="form-control" name="${setting}"
+              <input tal:condition="setting != 'mysql_pwd'"
+                class="form-control" name="${setting}"
                 value="${setting_value}"></input>
+              <input tal:condition="setting == 'mysql_pwd'"
+                class="form-control" name="${setting}"
+                value=""></input>
             </div>
             <input type="hidden" name="edit.settings" value="True"></input>
             <div class="form-group">
@@ -123,6 +127,11 @@
             </div>
           </li>
         </ul>
+
+        <a tal:condition="not old_installed" class="install-old"
+            href="${install_old_deps_url}">Install the OLD and its
+            dependencies.</a>
+        &nbsp;
 
         <h3>Core Dependencies</h3>
         <table class="info-table dependencies">

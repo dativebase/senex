@@ -38,6 +38,10 @@ from .models import (
     SenexState,
     )
 
+from installold import (
+    install
+    )
+
 
 # Human-readable settings labels.
 setting_labels_human = {
@@ -151,7 +155,11 @@ def update_settings(request):
     new_senex_state = SenexState()
     changed = False
     for attr in new_senex_state.settings_attrs:
-        setattr(new_senex_state, attr, request.params[attr])
+        if attr == 'mysql_pwd':
+            if request.params[attr]:
+                setattr(new_senex_state, attr, request.params[attr])
+        else:
+            setattr(new_senex_state, attr, request.params[attr])
         if getattr(senex_state, attr) != getattr(new_senex_state, attr):
             changed = True
     if changed:
@@ -224,6 +232,25 @@ def validate_settings(settings, warnings):
     return warnings
 
 
+def install_old():
+    """Install the OLD and all of its dependencies, given the settings
+    specified in the most recent senex_state model.
+
+    """
+
+    print 'INSTALL the OLD and its dependencies'
+    senex_state = get_senex_state_model()
+    settings = senex_state.get_settings()
+    pprint.pprint(settings)
+
+    # settings just needs {'env_dir': options.env_dir or 'env'}
+    try:
+        install(settings)
+    except SystemExit as e:
+        print 'CAUGHT SYSTEM EXIT!!!! with this error:'
+        print e
+
+
 @view_config(route_name='view_main_page', renderer='templates/main.pt',
     permission='view')
 def view_main_page(request):
@@ -232,15 +259,20 @@ def view_main_page(request):
         if ('form.submitted' in request.params and
             'edit.settings' in request.params):
             update_settings(request)
+        if 'install_old_deps' in request.params:
+            install_old()
         olds = DBSession.query(OLD).all()
         server_state, dependency_state, settings = get_state()
         warnings = get_warnings(server_state, dependency_state, settings)
         if request.params.get('validate_settings') == 'true':
             warnings = validate_settings(settings, warnings)
         old_installed = [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
+        if settings.get('mysql_pwd'):
+            settings['mysql_pwd'] = '********************'
         return dict(
             edit_settings_url=request.route_url('view_main_page'),
             validate_settings_url='%s?validate_settings=true' % request.route_url('view_main_page'),
+            install_old_deps_url='%s?install_old_deps=true' % request.route_url('view_main_page'),
             logged_in=logged_in,
             olds=olds,
             server=server_state,
