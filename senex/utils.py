@@ -192,7 +192,10 @@ def apache_installed():
 
 
 def get_apache_version():
-    stdout = shell(['apachectl', '-v'])
+    if platform.system() == 'Darwin':
+        stdout = shell(['apachectl', '-v'])
+    else:
+        stdout = shell(['apache2', '-v'])
     if stdout.strip():
         try:
             resp = stdout.strip()
