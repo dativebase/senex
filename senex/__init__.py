@@ -11,6 +11,8 @@ from .models import (
     Base,
     )
 
+from worker import start_worker
+
 
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
@@ -18,6 +20,7 @@ def main(global_config, **settings):
     engine = engine_from_config(settings, 'sqlalchemy.')
     DBSession.configure(bind=engine)
     Base.metadata.bind = engine
+    start_worker()
     authn_policy = AuthTktAuthenticationPolicy(
         'blargon5', callback=groupfinder, hashalg='sha512', timeout=900)
     authz_policy = ACLAuthorizationPolicy()
@@ -29,6 +32,7 @@ def main(global_config, **settings):
     config.add_static_view('static', 'static', cache_max_age=3600)
 
     config.add_route('view_main_page', '/')
+    config.add_route('return_status', '/senexstatus')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
 

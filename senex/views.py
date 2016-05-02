@@ -8,7 +8,8 @@ import os
 from .utils import (
     get_server,
     get_dependencies,
-    validate_mysql_credentials
+    validate_mysql_credentials,
+    generate_salt
     )
 
 from pyramid.httpexceptions import (
@@ -38,9 +39,7 @@ from .models import (
     SenexState,
     )
 
-from installold import (
-    install
-    )
+from worker import worker_q
 
 
 # Human-readable settings labels.
@@ -135,8 +134,7 @@ def get_state():
             settings = senex_state.get_settings()
     else:
         server_state, dependency_state, settings = create_new_state()
-    return server_state, dependency_state, settings
-
+    return server_state, dependency_state, settings, senex_state.installation_in_progress 
 
 @subscriber(IBeforeRender)
 def globals_factory(event):
@@ -238,17 +236,36 @@ def install_old():
 
     """
 
-    print 'INSTALL the OLD and its dependencies'
     senex_state = get_senex_state_model()
+    if senex_state.installation_in_progress:
+        print 'install already in progress; returning.'
+        return
+    senex_state.installation_in_progress = True
+    DBSession.add(senex_state)
     settings = senex_state.get_settings()
-    pprint.pprint(settings)
+    worker_q.put({
+        'id': generate_salt(),
+        'func': 'install_old',
+        'args': settings
+    })
 
-    # settings just needs {'env_dir': options.env_dir or 'env'}
-    try:
-        install(settings)
-    except SystemExit as e:
-        print 'CAUGHT SYSTEM EXIT!!!! with this error:'
-        print e
+
+@view_config(route_name='return_status', renderer='json',
+    permission='view')
+def return_status(request):
+    """Return a JSON object indicating the status of Senex, in particular
+    whether an installation is in progress. This is called asynchronously by
+    a JavaScript-based long-polling strategy. See static/scripts.js.
+
+    """
+
+    logged_in = request.authenticated_userid
+    if logged_in:
+        senex_state = get_senex_state_model()
+        return {'installation_in_progress':
+            senex_state.installation_in_progress}
+    else:
+        return {'logged_in': False}
 
 
 @view_config(route_name='view_main_page', renderer='templates/main.pt',
@@ -262,7 +279,7 @@ def view_main_page(request):
         if 'install_old_deps' in request.params:
             install_old()
         olds = DBSession.query(OLD).all()
-        server_state, dependency_state, settings = get_state()
+        server_state, dependency_state, settings, installation_in_progress = get_state()
         warnings = get_warnings(server_state, dependency_state, settings)
         if request.params.get('validate_settings') == 'true':
             warnings = validate_settings(settings, warnings)
@@ -272,6 +289,7 @@ def view_main_page(request):
         return dict(
             edit_settings_url=request.route_url('view_main_page'),
             validate_settings_url='%s?validate_settings=true' % request.route_url('view_main_page'),
+            return_status_url=request.route_url('return_status'),
             install_old_deps_url='%s?install_old_deps=true' % request.route_url('view_main_page'),
             logged_in=logged_in,
             olds=olds,
@@ -283,6 +301,7 @@ def view_main_page(request):
             setting_labels_human=setting_labels_human,
             setting_tooltips=setting_tooltips,
             old_installed=old_installed,
+            installation_in_progress=installation_in_progress,
             warnings=warnings
             )
     else:

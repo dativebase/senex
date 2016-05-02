@@ -105,6 +105,14 @@
 
         <h2>Dependencies</h2>
         <ul>
+          <li class="installation-in-progress-indicator"
+              data-url="${return_status_url}"
+              tal:condition="installation_in_progress">
+            <div>
+              <i class="fa fa-cog fa-spin fa-3x fa-fw" aria-hidden="true"></i>
+              &nbsp;The OLD and its dependencies are currently being installed.
+            </div>
+          </li>
           <li tal:condition="old_installed">
             <div class="ok-bk">
               <i class="fa fa-check-circle"></i>&nbsp;OLD installed
@@ -128,7 +136,7 @@
           </li>
         </ul>
 
-        <a tal:condition="not old_installed" class="install-old"
+        <a tal:condition="warnings.get('core_dependencies')" class="install-old"
             href="${install_old_deps_url}">Install the OLD and its
             dependencies.</a>
         &nbsp;

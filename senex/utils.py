@@ -2,6 +2,7 @@ import platform
 import os
 import sys
 from subprocess import Popen, PIPE, STDOUT
+from uuid import uuid4
 from .installold import (
     which,
     shell,
@@ -11,6 +12,10 @@ from .installold import (
     pil_installed,
     get_python_path
     )
+
+
+def generate_salt():
+    return unicode(uuid4().hex)
 
 
 def validate_mysql_credentials(params):

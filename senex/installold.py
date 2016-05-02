@@ -476,14 +476,14 @@ def install_mysql_python(params):
 
     """
 
-    if mysql_python_installed():
+    if mysql_python_installed(params):
         print 'MySQL-python is already installed.'
         return
     flush('Installing MySQL-python ...')
     aptget(['libmysqlclient-dev', 'python-dev'])
     stdout = shell([get_easy_install_path(params), 'MySQL-python'])
     log('install-mysql-python.log', stdout)
-    if mysql_python_installed():
+    if mysql_python_installed(params):
         print 'Done.'
     else:
         sys.exit('%s.Failed to install MySQL-python.%s' % (
