@@ -58,8 +58,10 @@ class OLD(Base):
     __tablename__ = u'olds'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
+    dir_name = Column(Text, unique=True)
     human_name = Column(Text)
-    running = Column(Boolean)
+    built = Column(Boolean, default=False)
+    running = Column(Boolean, default=False)
 
 
 class SenexState(Base):

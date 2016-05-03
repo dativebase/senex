@@ -10,7 +10,7 @@ $(function(){
         $('div.display-settings-div').fadeIn();
     });
 
-    $('input[name=login]').first().focus();
+    $('input[type=text]').first().focus();
 
     // This is the long-polling to /senexstatus to see if an install is in
     // progress. TODO: refresh/reload page or update page when install attempt

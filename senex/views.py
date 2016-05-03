@@ -5,6 +5,11 @@ import json
 import datetime
 import os
 
+from .buildold import (
+    build,
+    get_dir_name_from_old_name,
+    )
+
 from .utils import (
     get_server,
     get_dependencies,
@@ -115,7 +120,7 @@ def get_senex_state_model():
     return DBSession.query(SenexState).order_by(SenexState.id.desc()).first()
 
 
-def get_state():
+def get_state(force_refresh=False):
     """Return the state of the server, i.e., its server stats (like OS and
     version) as well as the state of our OLD dependency installation. We return
     a cached value from the db if we've checked the actual state recently. If
@@ -126,7 +131,7 @@ def get_state():
     senex_state = get_senex_state_model()
     if senex_state:
         age = datetime.datetime.utcnow() - senex_state.last_state_check
-        if age > state_stale_age():
+        if age > state_stale_age() or force_refresh:
             server_state, dependency_state, settings = create_new_state(senex_state)
         else:
             dependency_state = json.loads(senex_state.dependency_state)
@@ -209,12 +214,6 @@ def validate_settings(settings, warnings):
     """Do some basic validation of Senex's settings and return the warnings
     dict with new warnings, if there are settings validation issues.
 
-    TODOs:
-
-    - check if you can login with the MySQL credentials 'mysql_user' and
-      'mysql_pwd'
-      FOX
-
     """
 
     my_warnings = []
@@ -227,6 +226,14 @@ def validate_settings(settings, warnings):
         my_warnings.append(mysql_warning)
     if my_warnings:
         warnings['settings'] = ' '.join(my_warnings)
+
+    # FOX: check if the OLD is really installed
+    old_installed = [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
+    validate_mysql_credentials(build_params)
+    # Check if paster is really available at the specified path.
+    # if not which(build_params['paster_path']):
+        # Sorry, there is no (paster) executable at %s. Please install Paste and tell us where it is.%s' % build_params['paster_path']
+
     return warnings
 
 
@@ -268,6 +275,13 @@ def return_status(request):
         return {'logged_in': False}
 
 
+def get_old_installed(dependency_state):
+    try:
+        return [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
+    except:
+        return False
+
+
 @view_config(route_name='view_main_page', renderer='templates/main.pt',
     permission='view')
 def view_main_page(request):
@@ -283,10 +297,12 @@ def view_main_page(request):
         warnings = get_warnings(server_state, dependency_state, settings)
         if request.params.get('validate_settings') == 'true':
             warnings = validate_settings(settings, warnings)
-        old_installed = [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
+        old_installed = get_old_installed(dependency_state)
+
         if settings.get('mysql_pwd'):
             settings['mysql_pwd'] = '********************'
         return dict(
+            add_old_url=request.route_url('add_old'),
             edit_settings_url=request.route_url('view_main_page'),
             validate_settings_url='%s?validate_settings=true' % request.route_url('view_main_page'),
             return_status_url=request.route_url('return_status'),
@@ -330,26 +346,118 @@ def view_old(request):
         )
 
 
+def validate_old(old):
+    errors = {}
+    name_error = validate_old_name(old)
+    if name_error:
+        errors['name'] = name_error
+    return errors
+
+
+def validate_old_name(old):
+    if not re.search('^\w+$', old.name.strip()):
+        return ('The name of an OLD can only contain letters, numbers'
+            ' and/or the underscore.')
+    existing_old = DBSession.query(OLD).filter_by(name=old.name).one()
+    if existing_old:
+        return ('There is already an OLD with the name %s installed here.'
+            ' Please try again with a different name.' % old.name)
+    existing_old = DBSession.query(OLD).filter_by(dir_name=old.dir_name).one()
+    if existing_old:
+        return ('Sorry, the name %s cannot be used because it is too similar to'
+            ' an OLD that already exists. Please try again with a different'
+            ' name.' % old.name)
+    return None
+
+
 @view_config(route_name='add_old', renderer='templates/edit_old.pt',
     permission='edit')
 def add_old(request):
-    oldname = request.matchdict['oldname']
     if 'form.submitted' in request.params:
-        # body = request.params['body']
-        # TODO: get form field values from request params and instantiate a new
-        # OLD with them.
-        old = OLD(name=oldname)
+        name = request.params['name'].strip()
+        dir_name = get_dir_name_from_old_name(name)
+        human_name = request.params['human_name'].strip()
+        old = OLD(name=name, dir_name=dir_name, human_name=human_name)
+        errors = validate_old(old)
+        if errors:
+            print 'There are errors in this OLD so we cannot add it.'
+            print errors
+            return dict(
+                old=old,
+                errors=errors,
+                logged_in=request.authenticated_userid,
+                save_url=request.route_url('add_old'),
+                login_url=request.route_url('login'),
+                logout_url=request.route_url('logout')
+                )
+        else:
+            print 'There are no errors in this OLD so we can add it.'
+
+        build_params = get_build_params(old)
+        server_state, dependency_state, settings, installation_in_progress = \
+            get_state(True)
+        warnings = get_warnings(server_state, dependency_state, settings)
+        warnings = validate_settings(settings, warnings)
+        if warnings:
+            print ('There is something wrong with Senex\'s state so we cannot'
+                ' build this OLD')
+        else:
+            print ('There is nothing wrong with Senex\'s state so we can build'
+                ' this OLD')
+        try:
+            build(build_params, False)
+        except SystemExit as e:
+            print ('This error occurred when attempting to build the OLD'
+                ' %s: %s' % (old.name, e))
+            old.built = False
+            old.running = False
+        except Exception as e:
+            print ('This error occurred when attempting to build the OLD'
+                ' %s: %s' % (old.name, e))
+            old.built = False
+            old.running = False
+        else:
+            old.built = True
+            old.running = True
         DBSession.add(old)
-        return HTTPFound(location = request.route_url('view_old',
-                                                      oldname=oldname))
+        return HTTPFound(location = request.route_url('view_old', oldname=old.name))
     old = OLD(name='')
     return dict(
         old=old,
+        errors={},
         logged_in=request.authenticated_userid,
-        save_url=request.route_url('add_old', oldname=oldname),
+        save_url=request.route_url('add_old'),
         login_url=request.route_url('login'),
         logout_url=request.route_url('logout')
         )
+
+
+def get_build_params(old):
+    """Return the build params, a dict describing the OLD to be built and
+    relevant aspects of Senex's state. This dict is neede by buildold.py's
+    `build` function.
+
+    """
+
+    senex_state = get_senex_state_model()
+    env_dir = senex_state.env_dir
+    paster_path = os.path.join(os.path.expanduser('~'), env_dir, 'bin',
+            'paster')
+    return {
+        'old_name': old.name,
+        'old_dir_name': old.dir_name,
+        'mysql_user': senex_state.mysql_user,
+        'mysql_pwd': senex_state.mysql_pwd,
+        'paster_path': paster_path,
+        'apps_path': senex_state.apps_path,
+        'vh_path': senex_state.vh_path,
+        'ssl_crt_path': senex_state.ssl_crt_path,
+        'ssl_key_path': senex_state.ssl_key_path,
+        'ssl_pem_path': senex_state.ssl_pem_path,
+        'host': senex_state.host,
+        'actions': [] # remembers what we've done, in case abort needed.
+    }
+
 
 
 @view_config(route_name='edit_old', renderer='templates/edit_old.pt',

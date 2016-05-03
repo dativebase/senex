@@ -36,9 +36,9 @@ def main(global_config, **settings):
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
 
-    config.add_route('view_old', '/{oldname}')
-    config.add_route('add_old', '/add/{oldname}')
-    config.add_route('edit_old', '/{oldname}/edit')
+    config.add_route('add_old', '/olds/add')
+    config.add_route('view_old', '/olds/{oldname}')
+    config.add_route('edit_old', '/olds/{oldname}/edit')
 
     config.scan()
     return config.make_wsgi_app()

@@ -11,6 +11,7 @@
       <div tal:condition="logged_in">
 
         <h2>OLD Instances</h2>
+        <p><a href="${add_old_url}" class="create-new-old">Create an OLD</a></p>
         <table tal:condition="len(olds) > 0" class="info-table olds-summary">
           <thead>
             <tr>
@@ -58,9 +59,7 @@
           <a href="${validate_settings_url}">Validate</a>
           <p>Senex's settings determine where on your server the OLD is
           installed, what domain your OLDs will be served at, and other
-          details. <span class="senex-warning">Warning: do not change
-          these settings unless you are sure you know what you are
-          doing.</span></p>
+          details.</p>
 
           <ul>
             <li tal:condition="bool(warnings.get('settings'))">

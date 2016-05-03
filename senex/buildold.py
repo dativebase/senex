@@ -1260,7 +1260,7 @@ def destroy(params, global_state):
     print 'Done.'
 
 
-def build(params):
+def build(params, do_save_state=True):
     """Build an OLD, given `params`.
 
     """
@@ -1285,7 +1285,8 @@ def build(params):
     restart_apache(params)
     create_cronjob(params)
     init_script(params)
-    save_state(params)
+    if do_save_state:
+        save_state(params)
 
     print ('The %s OLD is being served at %shttps://%s/%s%s.\nIts files are'
         ' stored at %s%s%s.' % (params['old_name'], ANSI_OKGREEN, params['host'],
