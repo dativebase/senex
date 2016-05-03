@@ -576,6 +576,28 @@ def install_PIL(params):
     else:
         print 'Failed.'
 
+def get_pil_tests(script_dir_path): 
+    return  ("""
+import Image
+
+im = Image.open('%s/media/sample.jpg')
+im.thumbnail((200, 200), Image.ANTIALIAS)
+im.save('%s/media/small_sample.jpg')
+
+im = Image.open('%s/media/sample.png')
+im.thumbnail((200, 200), Image.ANTIALIAS)
+im.save('%s/media/small_sample.png')
+
+im = Image.open('%s/media/sample.gif')
+im.thumbnail((200, 200), Image.ANTIALIAS)
+im.save('%s/media/small_sample.gif')
+""" % (script_dir_path,
+       script_dir_path,
+       script_dir_path,
+       script_dir_path,
+       script_dir_path,
+       script_dir_path)).strip()
+
 
 def test_PIL(params):
     """Test whether PIL is working correctly by creating thumbnails of a .jpg,
@@ -585,7 +607,11 @@ def test_PIL(params):
 
     if pil_installed(params):
         flush('Testing PIL ...')
-        stdout = shell([get_python_path(params), 'tests/pil.py'])
+        pil_tests_path = os.path.join(get_script_dir_path(), 'tests', 'pil.py')
+        with open(pil_tests_path, 'w') as f:
+            f.write(get_pil_tests(get_script_dir_path()))
+        stdout = shell([get_python_path(params), pil_tests_path])
+        print stdout
         try:
             for ext in ('gif', 'png', 'jpg'):
                 orignm = 'sample.%s' % ext
@@ -869,7 +895,7 @@ def install_mitlm():
         print 'MITLM is already installed.'
         return
     flush('Installing MITLM ...')
-    stdout = aptget(['autoconf', 'automake', 'libtool', 'gfortran'])
+    stdout = aptget(['g++', 'autoconf', 'automake', 'libtool', 'gfortran'])
     log('install-mitlm-libraries.log', stdout)
     mitlmpath = os.path.join(get_tmp_path(), 'mitlm-0.4.1.tar.gz')
     mitlmdirpath = os.path.join(get_tmp_path(), 'mitlm-0.4.1')
