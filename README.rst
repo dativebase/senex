@@ -39,6 +39,68 @@ TODO
     script will still work without it.
 
 
+Installing Senex
+--------------------------------------------------------------------------------
+
+First, if you don't have Python 2.7 as your system Python (which is the case
+with Ubuntu 10.04), then install it using the instructions in `Install Python
+2.7 on Ubuntu 10.04` below.
+
+If Python 2.7 is your system python and you don't have Python setuptools
+installed in it, then install it::
+
+    $ sudo apt-get install python-setuptools
+
+If you don't have Python's virtualenv installed in your system Python, then
+install it using easy_install from setuptools::
+
+    $ sudo easy_install virtualenv
+
+Create and activate a virtual environment::
+
+    $ virtualenv env-senex
+    $ source env-senex/bin/activate
+
+Download Senex's source from GitHub and install its dependencies::
+
+    $ git clone https://github.com/jrwdunham/senex.git
+    $ cd senex
+    $ python setup.py develop
+
+Install the OLD and its dependencies::
+
+    $ sudo python senex/installold.py
+
+Create Senex's database tables and serve it::
+
+    $ initialize_senex_db development.ini
+    $ pserve development.ini
+
+
+
+
+Install Python 2.7 on Ubuntu 10.04
+--------------------------------------------------------------------------------
+
+Install it::
+
+    $ sudo apt-get install python-software-properites
+    $ sudo add-apt-repository ppa:fkrull/deadsnakes
+    $ sudo apt-get update
+    $ sudo apt-get install python2.7 python2.7-dev
+
+Install setuptools for Python2.7::
+
+    $ wget --no-check-certificate https://bootstrap.pypa.io/ez_setup.py -O - | sudo python2.7
+
+If you don't have Python's virtualenv installed in your system Python, then
+install it using easy_install from setuptools::
+
+    $ sudo easy_install-2.7 virtualenv
+
+
+
+
 Creating a Development Setup for Senex
 --------------------------------------------------------------------------------
 

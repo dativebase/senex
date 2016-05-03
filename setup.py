@@ -17,6 +17,7 @@ requires = [
     'transaction',
     'zope.sqlalchemy',
     'waitress',
+    'python-crontab',
     ]
 
 setup(name='senex',
@@ -29,8 +30,8 @@ setup(name='senex',
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
         ],
-      author='',
-      author_email='',
+      author='Joel Dunham',
+      author_email='jrwdunham@gmail.com',
       url='',
       keywords='web wsgi bfg pylons pyramid',
       packages=find_packages(),
@@ -38,6 +39,7 @@ setup(name='senex',
       zip_safe=False,
       test_suite='senex',
       install_requires=requires,
+      scripts=['senex/installold.py'],
       entry_points="""\
       [paste.app_factory]
       main = senex:main

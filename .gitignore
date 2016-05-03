@@ -4,4 +4,6 @@
 *.pyc
 senex/log/
 senex/tmp/
+build/
+dist/
 
