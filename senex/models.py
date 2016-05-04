@@ -60,6 +60,7 @@ class OLD(Base):
     name = Column(Text, unique=True)
     dir_name = Column(Text, unique=True)
     human_name = Column(Text)
+    url = Column(Text, default='')
     built = Column(Boolean, default=False)
     running = Column(Boolean, default=False)
 

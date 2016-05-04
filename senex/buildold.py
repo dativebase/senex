@@ -1293,6 +1293,7 @@ def build(params, do_save_state=True):
         params['old_dir_name'], ANSI_ENDC, ANSI_OKGREEN,
         os.path.join(params['apps_path'], params['old_dir_name']), ANSI_ENDC))
     print 'Done.'
+    return 'https://%s/%s' % (params['host'], params['db_name'])
 
 
 @catcherror

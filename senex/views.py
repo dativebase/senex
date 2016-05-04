@@ -397,7 +397,7 @@ def add_old(request):
             print ('There is nothing wrong with Senex\'s state so we can build'
                 ' this OLD')
             try:
-                build(build_params, False)
+                url = build(build_params, False)
             except SystemExit as e:
                 print ('This error occurred when attempting to build the OLD'
                     ' %s: %s' % (old.name, e))
@@ -407,6 +407,7 @@ def add_old(request):
             else:
                 old.built = True
                 old.running = True
+                old.url = url
         DBSession.add(old)
         return HTTPFound(location = request.route_url('view_old', oldname=old.name))
     old = OLD(name='')
