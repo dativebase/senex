@@ -226,14 +226,6 @@ def validate_settings(settings, warnings):
         my_warnings.append(mysql_warning)
     if my_warnings:
         warnings['settings'] = ' '.join(my_warnings)
-
-    # FOX: check if the OLD is really installed
-    old_installed = [d for d in dependency_state if d['name'] == 'OLD'][0]['installed']
-    validate_mysql_credentials(build_params)
-    # Check if paster is really available at the specified path.
-    # if not which(build_params['paster_path']):
-        # Sorry, there is no (paster) executable at %s. Please install Paste and tell us where it is.%s' % build_params['paster_path']
-
     return warnings
 
 
@@ -358,11 +350,11 @@ def validate_old_name(old):
     if not re.search('^\w+$', old.name.strip()):
         return ('The name of an OLD can only contain letters, numbers'
             ' and/or the underscore.')
-    existing_old = DBSession.query(OLD).filter_by(name=old.name).one()
+    existing_old = DBSession.query(OLD).filter_by(name=old.name).first()
     if existing_old:
         return ('There is already an OLD with the name %s installed here.'
             ' Please try again with a different name.' % old.name)
-    existing_old = DBSession.query(OLD).filter_by(dir_name=old.dir_name).one()
+    existing_old = DBSession.query(OLD).filter_by(dir_name=old.dir_name).first()
     if existing_old:
         return ('Sorry, the name %s cannot be used because it is too similar to'
             ' an OLD that already exists. Please try again with a different'
@@ -404,21 +396,17 @@ def add_old(request):
         else:
             print ('There is nothing wrong with Senex\'s state so we can build'
                 ' this OLD')
-        try:
-            build(build_params, False)
-        except SystemExit as e:
-            print ('This error occurred when attempting to build the OLD'
-                ' %s: %s' % (old.name, e))
-            old.built = False
-            old.running = False
-        except Exception as e:
-            print ('This error occurred when attempting to build the OLD'
-                ' %s: %s' % (old.name, e))
-            old.built = False
-            old.running = False
-        else:
-            old.built = True
-            old.running = True
+            try:
+                build(build_params, False)
+            except SystemExit as e:
+                print ('This error occurred when attempting to build the OLD'
+                    ' %s: %s' % (old.name, e))
+            except Exception as e:
+                print ('This error occurred when attempting to build the OLD'
+                    ' %s: %s' % (old.name, e))
+            else:
+                old.built = True
+                old.running = True
         DBSession.add(old)
         return HTTPFound(location = request.route_url('view_old', oldname=old.name))
     old = OLD(name='')
@@ -464,7 +452,7 @@ def get_build_params(old):
     permission='edit')
 def edit_old(request):
     oldname = request.matchdict['oldname']
-    old = DBSession.query(OLD).filter_by(name=oldname).one()
+    old = DBSession.query(OLD).filter_by(name=oldname).first()
     if 'form.submitted' in request.params:
         # TODO: use request params to modify `old` with form input values.
         # old.data = request.params['body']
