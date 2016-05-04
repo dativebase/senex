@@ -6,4 +6,3 @@ SQLAlchemy
 transaction
 zope.sqlalchemy
 waitress
-ordereddict

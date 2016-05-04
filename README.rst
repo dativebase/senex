@@ -26,6 +26,13 @@ rest of its requirements and the rest of the OLD's requirements on its own.
 - Apache 2
 - git
 
+The MySQL user specified via Senex's interface must exist and must have been
+granted full privileges::
+
+    mysql> CREATE USER 'newuser'@'localhost' IDENTIFIED BY 'password';
+    mysql> GRANT ALL PRIVILEGES ON *.* TO 'newuser'@'localhost';
+    mysql> FLUSH PRIVILEGES;
+
 
 TODO
 --------------------------------------------------------------------------------
@@ -56,25 +63,25 @@ install it using easy_install from setuptools::
 
     $ sudo easy_install virtualenv
 
-Create and activate a virtual environment::
+Create a virtual environment::
 
+    $ cd ~
     $ virtualenv env-senex
-    $ source env-senex/bin/activate
 
 Download Senex's source from GitHub and install its dependencies::
 
     $ git clone https://github.com/jrwdunham/senex.git
     $ cd senex
-    $ python setup.py develop
+    $ ~/env-senex/bin/python setup.py develop
 
 Install the OLD and its dependencies::
 
-    $ sudo python senex/installold.py
+    $ sudo ~/env-senex/bin/python senex/installold.py
 
 Create Senex's database tables and serve it::
 
-    $ initialize_senex_db development.ini
-    $ pserve development.ini
+    $ ~/env-senex/bin/initialize_senex_db development.ini
+    $ ~/env-senex/bin/pserve development.ini
 
 
 
