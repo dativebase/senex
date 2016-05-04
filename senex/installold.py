@@ -519,13 +519,17 @@ def install_PIL_dependencies():
 
     """
 
-    stdout = aptget(['libjpeg-dev', 'libfreetype6', 'libfreetype6-dev',
-        'zlib1g-dev'])
-    log('install-PIL-dependencies.log', stdout)
-    if get_linux_id() == 'Ubuntu' and get_linux_release() == '12.04':
+    if get_linux_id() == 'Ubuntu' and get_linux_release() in ['12.04', '14.04']:
+        stdout = aptget(['libjpeg-dev', 'libfreetype6', 'libfreetype6-dev',
+            'zlib1g-dev', 'libjpeg8-dev'])
+        log('install-PIL-dependencies.log', stdout)
         shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/libfreetype.so', '/usr/lib/'])
         shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/libjpeg.so', '/usr/lib/'])
         shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/ligz.so', '/usr/lib/'])
+    else:
+        stdout = aptget(['libjpeg-dev', 'libfreetype6', 'libfreetype6-dev',
+            'zlib1g-dev'])
+        log('install-PIL-dependencies.log', stdout)
 
 
 def install_PIL(params):
