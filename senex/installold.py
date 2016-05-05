@@ -139,7 +139,7 @@ def aptgetupdate():
     """
 
     if get_linux_id() == 'Ubuntu':
-        shell(['sudo', 'apt-get', 'update'])
+        shell(['sudo', 'apt-get', '-y', 'update'])
 
 
 def aptget(lib_list):
@@ -690,7 +690,11 @@ def install_FFmpeg():
         print 'FFmpeg is already installed.'
         return
     flush('Installing FFmpeg ...')
-    install_FFmpeg_dependencies()
+    if get_linux_id() == 'Ubuntu' and get_linux_release() == '14.04':
+        shell(['sudo', 'add-apt-repository', '-y', 'ppa:mc3man/trusty-media'])
+        shell(['sudo', 'apt-get', '-y', 'update'])
+    else:
+        install_FFmpeg_dependencies()
     stdout = aptget(['ffmpeg'])
     log('install-ffmpeg.log', stdout)
     if which('ffmpeg'):
