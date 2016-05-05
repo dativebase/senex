@@ -133,6 +133,15 @@ def shell(cmd_list, cwd=None):
     return stdout
 
 
+def aptgetupdate():
+    """Run `sudo apt-get update`
+
+    """
+
+    if get_linux_id() == 'Ubuntu':
+        shell(['sudo', 'apt-get', 'update'])
+
+
 def aptget(lib_list):
     """Run `sudo apt-get -y install` on the libraries in `lib_list`. The -y
     option answers 'y' to interactive prompts.
@@ -357,14 +366,17 @@ def mysql_python_installed(params):
 
 
 def pil_installed(params):
-    """Return `True` if PIL is installed in ~/env/.
+    """Return `True` if PIL (or Pillow) is installed in ~/env/.
 
     """
 
     python_path = get_python_path(params)
     if not os.path.isfile(python_path):
         return False
-    stdout = shell([python_path, '-c', 'import Image'])
+    if get_linux_id() == 'Ubuntu' and get_linux_release() == '14.04':
+        stdout = shell([python_path, '-c', 'from PIL import Image'])
+    else:
+        stdout = shell([python_path, '-c', 'import Image'])
     if stdout.strip():
         return False
     return True
@@ -519,21 +531,34 @@ def install_PIL_dependencies():
 
     """
 
-    if get_linux_id() == 'Ubuntu' and get_linux_release() in ['12.04', '14.04']:
+    if get_linux_id() == 'Ubuntu' and get_linux_release() == '14.04':
+        stdout = aptget(['python-dev', 'libtiff5-dev', 'libjpeg8-dev',
+            'zlib1g-dev', 'libfreetype6-dev', 'liblcms2-dev', 'libwebp-dev',
+            'tcl8.6-dev', 'tk8.6-dev', 'python-tk'])
+    elif get_linux_id() == 'Ubuntu' and get_linux_release() == '12.04':
         stdout = aptget(['libjpeg-dev', 'libfreetype6', 'libfreetype6-dev',
             'zlib1g-dev', 'libjpeg8-dev'])
-        log('install-PIL-dependencies.log', stdout)
-        shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/libfreetype.so', '/usr/lib/'])
-        shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/libjpeg.so', '/usr/lib/'])
-        shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/ligz.so', '/usr/lib/'])
+        shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/libfreetype.so',
+            '/usr/lib/'])
+        shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/libjpeg.so',
+            '/usr/lib/'])
+        shell(['sudo', 'ln', '-s', '/usr/lib/`uname -i`-linux-gnu/ligz.so',
+            '/usr/lib/'])
     else:
         stdout = aptget(['libjpeg-dev', 'libfreetype6', 'libfreetype6-dev',
             'zlib1g-dev'])
-        log('install-PIL-dependencies.log', stdout)
+    log('install-PIL-dependencies.log', stdout)
+
+
+def install_Pillow(params)
+    stdout = shell([get_easy_install_path(params), 'Pillow'])
+    log('install-Pillow.log', stdout)
 
 
 def install_PIL(params):
-    """Method::
+    """Install PIL or Pillow.
+
+    Method for installing PIL::
 
         $ wget http://effbot.org/downloads/Imaging-1.1.7.tar.gz
         $ tar -zxvf Imaging-1.1.7.tar.gz
@@ -549,36 +574,40 @@ def install_PIL(params):
         return
     flush('Installing PIL ...')
     install_PIL_dependencies()
-    pilpath = os.path.join(get_tmp_path(), 'Imaging-1.1.7.tar.gz')
-    pildirpath = os.path.join(get_tmp_path(), 'Imaging-1.1.7')
-    fname, headers = urllib.urlretrieve(
-        'http://effbot.org/downloads/Imaging-1.1.7.tar.gz', pilpath)
-    if not os.path.isfile(pilpath):
-        print ('%sUnable to download PIL. Aborting.%s' % (ANSI_FAIL,
-            ANSI_ENDC))
-        return
-    tar = tarfile.open(pilpath, mode='r:gz')
-    tar.extractall(path=get_tmp_path())
-    tar.close()
-    if not os.path.isdir(pildirpath):
-        print ('%sUnable to extract PIL. Aborting.%s' % (ANSI_FAIL,
-            ANSI_ENDC))
-        return
-    logtext = ['Ran `setup.py build_ext -i` in PIL\n\n']
-    stdout = shell([get_python_path(params), 'setup.py', 'build_ext', '-i'],
-        pildirpath)
-    logtext.append(stdout)
-    logtext.append('\n\nRan `selftext.py` in PIL\n\n')
-    stdout = shell([get_python_path(params), 'selftest.py'], pildirpath)
-    logtext.append(stdout)
-    stdout = shell([get_python_path(params), 'setup.py', 'install'],
-        pildirpath)
-    logtext.append(stdout)
-    log('install-PIL.log', '\n'.join(logtext))
+    if get_linux_id() == 'Ubuntu' and get_linux_release() == '14.04':
+        install_Pillow()
+    else:
+        pilpath = os.path.join(get_tmp_path(), 'Imaging-1.1.7.tar.gz')
+        pildirpath = os.path.join(get_tmp_path(), 'Imaging-1.1.7')
+        fname, headers = urllib.urlretrieve(
+            'http://effbot.org/downloads/Imaging-1.1.7.tar.gz', pilpath)
+        if not os.path.isfile(pilpath):
+            print ('%sUnable to download PIL. Aborting.%s' % (ANSI_FAIL,
+                ANSI_ENDC))
+            return
+        tar = tarfile.open(pilpath, mode='r:gz')
+        tar.extractall(path=get_tmp_path())
+        tar.close()
+        if not os.path.isdir(pildirpath):
+            print ('%sUnable to extract PIL. Aborting.%s' % (ANSI_FAIL,
+                ANSI_ENDC))
+            return
+        logtext = ['Ran `setup.py build_ext -i` in PIL\n\n']
+        stdout = shell([get_python_path(params), 'setup.py', 'build_ext', '-i'],
+            pildirpath)
+        logtext.append(stdout)
+        logtext.append('\n\nRan `selftext.py` in PIL\n\n')
+        stdout = shell([get_python_path(params), 'selftest.py'], pildirpath)
+        logtext.append(stdout)
+        stdout = shell([get_python_path(params), 'setup.py', 'install'],
+            pildirpath)
+        logtext.append(stdout)
+        log('install-PIL.log', '\n'.join(logtext))
     if pil_installed(params):
         print 'Done.'
     else:
         print 'Failed.'
+
 
 def get_pil_tests(script_dir_path): 
     return  ("""
@@ -965,6 +994,7 @@ def install(params):
 
     # Core dependencies: these must be installed in order for the OLD to be
     # minimally functional.
+    aptgetupdate()
     install_easy_install()
     install_virtualenv()
     create_env(params)
