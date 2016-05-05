@@ -550,7 +550,7 @@ def install_PIL_dependencies():
     log('install-PIL-dependencies.log', stdout)
 
 
-def install_Pillow(params)
+def install_Pillow(params):
     stdout = shell([get_easy_install_path(params), 'Pillow'])
     log('install-Pillow.log', stdout)
 
@@ -575,7 +575,7 @@ def install_PIL(params):
     flush('Installing PIL ...')
     install_PIL_dependencies()
     if get_linux_id() == 'Ubuntu' and get_linux_release() == '14.04':
-        install_Pillow()
+        install_Pillow(params)
     else:
         pilpath = os.path.join(get_tmp_path(), 'Imaging-1.1.7.tar.gz')
         pildirpath = os.path.join(get_tmp_path(), 'Imaging-1.1.7')
@@ -611,7 +611,10 @@ def install_PIL(params):
 
 def get_pil_tests(script_dir_path): 
     return  ("""
-import Image
+try:
+    import Image
+except ImportError:
+    from PIL import Image
 
 im = Image.open('%s/media/sample.jpg')
 im.thumbnail((200, 200), Image.ANTIALIAS)
