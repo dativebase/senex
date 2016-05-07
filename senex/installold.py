@@ -259,7 +259,7 @@ def get_params():
     add_optparser_options(parser)
     (options, args) = parser.parse_args()
     params = {
-        'env_dir': options.env_dir or 'env'
+        'env_dir': options.env_dir or 'env-old'
     }
     return params
 
