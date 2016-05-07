@@ -4,6 +4,8 @@
 *.pyc
 senex/log/
 senex/tmp/
+senex/tests/pil.py
 build/
 dist/
+senex.egg-info/
 
