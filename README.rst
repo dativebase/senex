@@ -4,10 +4,9 @@ Senex
 Senex is a web application for high-level administration of
 `Online Linguistic Database (OLD)`_ applications.
 
-With Senex installed, you can do the following (either from a web interface or
-via the command line on your server):
+With Senex installed, you can install the OLD and its dependencies as well as
+do the following:
 
-- install the OLD software and its dependencies
 - create new OLD instances (e.g., for particular lanaguages)
 - start and stop existing OLD instances
 
@@ -21,7 +20,7 @@ are being targeted.
 The following must be installed in order for Senex to work. It can install the
 rest of its requirements and the rest of the OLD's requirements on its own.
 
-- Python 2.6 or 2.7
+- Python 2.7
 - MySQL server
 - Apache 2
 - git
@@ -32,18 +31,6 @@ granted full privileges::
     mysql> CREATE USER 'newuser'@'localhost' IDENTIFIED BY 'password';
     mysql> GRANT ALL PRIVILEGES ON *.* TO 'newuser'@'localhost';
     mysql> FLUSH PRIVILEGES;
-
-
-TODO
---------------------------------------------------------------------------------
-
-- Create a bash install script for Senex itself.
-
-- Add Python-crontab as a dependency in setup.py. From buildold:
-
-    Python-crontab (https://pypi.python.org/pypi/python-crontab) should be
-    installed if you want the OLD-restart cronjob to be created for you. But the
-    script will still work without it.
 
 
 Installing Senex
@@ -80,8 +67,9 @@ Install the OLD and its dependencies::
 
 Create Senex's database tables and serve it::
 
-    $ ~/env-senex/bin/initialize_senex_db development.ini
-    $ ~/env-senex/bin/pserve development.ini
+    $ cd
+    $ env-senex/bin/initialize_senex_db senex/development.ini
+    $ env-senex/bin/pserve senex/development.ini
 
 
 
