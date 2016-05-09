@@ -104,6 +104,7 @@ import pprint
 import json
 import datetime
 import tarfile
+import platform
 from subprocess import Popen, PIPE, STDOUT
 
 from buildold import create_directory_safely
@@ -373,7 +374,8 @@ def pil_installed(params):
     python_path = get_python_path(params)
     if not os.path.isfile(python_path):
         return False
-    if get_linux_id() == 'Ubuntu' and get_linux_release() == '14.04':
+    if (platform.system() == 'Linux' and get_linux_id() == 'Ubuntu' and
+            get_linux_release() == '14.04'):
         stdout = shell([python_path, '-c', 'from PIL import Image'])
     else:
         stdout = shell([python_path, '-c', 'import Image'])
