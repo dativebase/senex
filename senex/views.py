@@ -55,7 +55,7 @@ setting_labels_human = {
     'env_dir': 'Virtual Environment directory',
     'apps_path': 'OLD Applications path',
     'host': 'Host name',
-    'vh_path': 'Apache Virtual Hosts file path',
+    'vh_path': 'Virtual Hosts file path',
     'ssl_crt_path': 'SSL Certificate .crt file path',
     'ssl_key_path': 'SSL Certificate .key file path',
     'ssl_pem_path': 'SSL Certificate .pem file path'
@@ -74,23 +74,29 @@ setting_tooltips = {
     'host': ('The host name of the URL at which the OLDs will be served, e.g.,'
         ' www.myoldurl.com. OLDs will be served at a path relative to this'
         ' host.'),
-    'vh_path': ('The full path to the Apache virtual hosts file for proxying'
+    'vh_path': ('The full path to the Nginx/Apache virtual hosts file for proxying'
         ' requests to specific OLDs.'),
     'ssl_crt_path': 'The full path to your SSL Certificate .crt file.',
     'ssl_key_path': 'The full path to your SSL Certificate .key file.',
     'ssl_pem_path': 'The full path to your SSL Certificate .pem file.'
     }
 
-core_dependencies = (
-    'Python',
-    'OLD',
-    'MySQL',
-    'easy_install',
-    'virtualenv',
-    'MySQL-python',
-    'importlib',
-    'Apache'
-    )
+
+def get_core_dependencies(server_settings):
+    core_dependencies = [
+        'Python',
+        'OLD',
+        'MySQL',
+        'easy_install',
+        'virtualenv',
+        'MySQL-python',
+        'importlib'
+        ]
+    if server_settings.get('server') == 'nginx':
+        core_dependencies.append('Nginx')
+    else:
+        core_dependencies.append('Apache')
+    return core_dependencies
 
 
 def create_new_state(previous_state=None):
@@ -191,6 +197,7 @@ def get_warnings(server_state, dependency_state, settings):
         warnings['server'] = ('Senex is only known to work with Ubuntu Linux'
             ' 14.04 and 10.04.')
 
+    core_dependencies = get_core_dependencies(settings)
     for dependency in dependency_state:
         if (dependency['name'] in core_dependencies and
             not dependency['installed']):
@@ -294,6 +301,7 @@ def view_main_page(request):
         old_installed = get_old_installed(dependency_state)
         if settings.get('mysql_pwd'):
             settings['mysql_pwd'] = '********************'
+        core_dependencies = get_core_dependencies(settings)
         return dict(
             add_old_url=request.route_url('add_old'),
             edit_settings_url=request.route_url('view_main_page'),
@@ -423,7 +431,7 @@ def add_old(request):
 
 def get_build_params(old):
     """Return the build params, a dict describing the OLD to be built and
-    relevant aspects of Senex's state. This dict is neede by buildold.py's
+    relevant aspects of Senex's state. This dict is needed by buildold.py's
     `build` function.
 
     """

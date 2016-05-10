@@ -5,8 +5,8 @@
   Build OLD
 ================================================================================
 
-This is a command-line utility for creating, configuring and serving an OLD
-application on a server that already has the OLD software
+This is a module and a command-line utility for creating, configuring and
+serving an OLD application on a server that already has the OLD software
 (https://github.com/jrwdunham/old) and all of its dependencies installed. This
 is what it does:
 
@@ -16,8 +16,8 @@ is what it does:
         a. create the OLD config file,
         b. perform setup (build the tables and add default data), and
         c. serve the app.
-    4. Modifies /etc/apache2/sites-available/<VIRT_HOSTS_FILE> appropriately.
-    5. Restarts Apache.
+    4. Modifies/creates the appropriate Apache or Nginx config file.
+    5. Restarts Apache or Nginx.
     6. Adds a Cronjob to restart the OLD every minute, if it's down.
 
 
@@ -32,7 +32,7 @@ Additional information is required to build an OLD. You can specify it in
 options or let the script prompt you for it. The easiest, though, is to use the
 --config-file option to specify a path to a JSON config file that holds this
 information in an object with any of the following keys: 'mysql_user',
-'paster_path', 'apps_path', 'vh_path', or 'host'::
+'paster_path', 'apps_path', 'vh_path', 'server', or 'host'::
 
     $ ./buildold.py bla --config-file=buildold.conf
 
@@ -62,8 +62,8 @@ Warnings
    Definitive Guide to Pylons.
 
 2. You'll run into problems if you change the vh_path option after you have
-   isntalled OLDs with a different Apache virtual hosts config file. Don't do
-   this.
+   installed OLDs with a different Apache/Nginx virtual hosts config file.
+   Don't do this.
 
 
 TODOs
@@ -72,9 +72,6 @@ TODOs
 1. functionality for:
     - stop serving and redirect to error page.
     - start serving an already-built OLD.
-
-2. Create a separate executable to install/uninstall/update the OLD software
-   and its dependencies.
 
 """
 
@@ -563,6 +560,7 @@ def get_params():
         'mysql_pwd': options.mysql_pwd,
         'paster_path': options.paster_path or conf.get('paster_path'),
         'apps_path': options.apps_path or conf.get('apps_path'),
+        'server': options.server or conf.get('server'),
         'vh_path': options.vh_path or conf.get('vh_path'),
         'ssl_crt_path': options.ssl_crt_path or conf.get('ssl_crt_path'),
         'ssl_key_path': options.ssl_key_path or conf.get('ssl_key_path'),
@@ -655,6 +653,16 @@ def get_params():
         if not p['host']:
             sys.exit('%sYou must provide a host value.%s' % (ANSI_FAIL,
                 ANSI_ENDC))
+
+    # Prompt the user for which server to use (Nginx or Apache), if we don't
+    # know yet.
+    if not p['server']:
+        default = 'apache'
+        p['server'] = raw_input('%sPlease specify what server software you are'
+            ' using: apache or nginx. Default is %s:%s ' % (ANSI_WARNING,
+            default, ANSI_ENDC))
+        if not p['server']:
+            p['server'] = default
 
     # Prompt the user for the virtual hosts path, if we don't have it yet.
     if not p['vh_path']:

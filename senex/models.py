@@ -138,9 +138,12 @@ class SenexState(Base):
     # like www.myoldurl.com.
     host = Column(Unicode(255))
 
-    # Path to the Apache virtual hosts config file. This file may exist but it
-    # doesn't need to; senex will create it, if needed. Defaults to a file named
-    # `olds` located in /etc/apache2/sites-available/.
+    # The server that we are using: either "apache" or "nginx".
+    server = Column(Text, default='nginx')
+
+    # Path to the Apache/Nginx virtual hosts config file. This file may exist
+    # but it doesn't need to; senex will create it, if needed. Defaults to a
+    # file named `olds` located in /etc/apache2/sites-available/.
     vh_path = Column(Unicode(255), default=DEFAULT_VH_PATH)
 
     default_ssl_path = os.path.join(user_dir, DEFAULT_SSL_DIR)
@@ -153,8 +156,8 @@ class SenexState(Base):
     default_ssl_key_path = os.path.join(default_ssl_path, u'olds.key')
     ssl_key_path = Column(Unicode(255), default=default_ssl_key_path)
 
-    # Path to the SSL .pem file, i.e., the intermediate certificate, the one
-    # that Apache calls the `SSLCertificateChainFile`.
+    # Path to the SSL .pem file, i.e., the intermediate certificate. Note:
+    # Apache calls this the `SSLCertificateChainFile`.
     default_ssl_pem_path = os.path.join(default_ssl_path, u'olds.pem')
     ssl_pem_path = Column(Unicode(255), default=default_ssl_pem_path)
 
@@ -166,6 +169,7 @@ class SenexState(Base):
         'env_dir',
         'apps_path',
         'host',
+        'server',
         'vh_path',
         'ssl_crt_path',
         'ssl_key_path',

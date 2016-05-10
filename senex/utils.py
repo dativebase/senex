@@ -215,6 +215,20 @@ def get_apache_version():
     return ''
 
 
+def nginx_installed():
+    return bool(which('nginx'))
+
+
+def get_nginx_version():
+    stdout = shell(['nginx', '-v'])
+    if stdout.strip():
+        try:
+            return stdout.strip().split()[2].split('/')[1]
+        except:
+            return ''
+    return ''
+
+
 def get_foma_version():
     stdout = shell(['foma', '-v'])
     if stdout.strip():
@@ -308,6 +322,11 @@ def get_dependencies(params):
     if apache_installed_resp:
         apache_version = get_apache_version()
 
+    nginx_installed_resp = nginx_installed()
+    nginx_version = ''
+    if nginx_installed_resp:
+        nginx_version = get_nginx_version()
+
     foma_installed = bool(which('foma') and which('flookup'))
     foma_version = ''
     if foma_installed:
@@ -345,6 +364,12 @@ def get_dependencies(params):
             'name': 'Apache',
             'installed': apache_installed_resp,
             'version': apache_version
+        },
+
+        {
+            'name': 'Nginx',
+            'installed': nginx_installed_resp,
+            'version': nginx_version
         },
 
         {
