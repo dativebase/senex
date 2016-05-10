@@ -222,6 +222,7 @@ i.big-icon
   display: table;
 }
 
+form.edit-user-form .form-group label,
 form.login-form .form-group label
 {
   width: 7em;
@@ -277,5 +278,15 @@ button.show-settings-display
 .senex-warning
 {
   color: red;
+}
+
+.user-label
+{
+  width: 7em;
+}
+
+.user-attr-display
+{
+  display: inline-block;
 }
 

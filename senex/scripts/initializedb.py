@@ -1,4 +1,5 @@
 import os
+import json
 import sys
 import transaction
 
@@ -12,8 +13,14 @@ from pyramid.paster import (
 from ..models import (
     DBSession,
     OLD,
+    User,
     SenexState,
     Base,
+    )
+
+from ..utils import (
+    generate_salt,
+    encrypt_password,
     )
 
 
@@ -37,4 +44,18 @@ def main(argv=sys.argv):
     with transaction.manager:
         senex_state = SenexState()
         DBSession.add(senex_state)
+        admin = generate_default_administrator()
+        DBSession.add(admin)
+
+
+def generate_default_administrator():
+    admin = User()
+    admin.username = u'admin'
+    admin.salt = generate_salt()
+    admin.password = unicode(encrypt_password(u'adminAA11!!', str(admin.salt)))
+    admin.groups = unicode(json.dumps(['group:editors']))
+    admin.email = u'admin@example.com'
+    admin.first_name = u'Admin'
+    admin.last_name = u'Admin'
+    return admin
 

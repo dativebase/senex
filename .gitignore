@@ -2,6 +2,8 @@
 *.sqlite
 *.swp
 *.pyc
+*.xcf
+*.key
 senex/log/
 senex/tmp/
 senex/tests/pil.py

@@ -65,6 +65,22 @@ class OLD(Base):
     running = Column(Boolean, default=False)
 
 
+class User(Base):
+    """Senex user model. For authentication.
+
+    """
+
+    __tablename__ = u'users'
+    id = Column(Integer, primary_key=True)
+    username = Column(Unicode(255), unique=True)
+    password = Column(Unicode(255))
+    salt = Column(Unicode(255))
+    email = Column(Unicode(255))
+    groups = Column(UnicodeText, default=u'[]')
+    first_name = Column(Text)
+    last_name = Column(Text)
+
+
 class SenexState(Base):
     """The model for holding Senex's state. These values can be determined on
     each request but that seems inefficient so we only refresh these values if

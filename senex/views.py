@@ -4,6 +4,7 @@ import pprint
 import json
 import datetime
 import os
+import string
 
 from .buildold import (
     build,
@@ -14,7 +15,8 @@ from .utils import (
     get_server,
     get_dependencies,
     validate_mysql_credentials,
-    generate_salt
+    generate_salt,
+    encrypt_password
     )
 
 from pyramid.httpexceptions import (
@@ -36,11 +38,10 @@ from pyramid.renderers import get_renderer
 from pyramid.interfaces import IBeforeRender
 from pyramid.events import subscriber
 
-from .security import USERS
-
 from .models import (
     DBSession,
     OLD,
+    User,
     SenexState,
     )
 
@@ -285,12 +286,12 @@ def view_main_page(request):
         if 'install_old_deps' in request.params:
             install_old()
         olds = DBSession.query(OLD).all()
+        users = DBSession.query(User).all()
         server_state, dependency_state, settings, installation_in_progress = get_state()
         warnings = get_warnings(server_state, dependency_state, settings)
         if request.params.get('validate_settings') == 'true':
             warnings = validate_settings(settings, warnings)
         old_installed = get_old_installed(dependency_state)
-
         if settings.get('mysql_pwd'):
             settings['mysql_pwd'] = '********************'
         return dict(
@@ -301,6 +302,7 @@ def view_main_page(request):
             install_old_deps_url='%s?install_old_deps=true' % request.route_url('view_main_page'),
             logged_in=logged_in,
             olds=olds,
+            users=users,
             server=server_state,
             dependencies=dependency_state,
             core_dependencies=[d for d in dependency_state if d['name'] in core_dependencies],
@@ -382,8 +384,6 @@ def add_old(request):
                 login_url=request.route_url('login'),
                 logout_url=request.route_url('logout')
                 )
-        else:
-            print 'There are no errors in this OLD so we can add it.'
 
         build_params = get_build_params(old)
         server_state, dependency_state, settings, installation_in_progress = \
@@ -483,12 +483,16 @@ def login(request):
     if 'form.submitted' in request.params:
         login = request.params['login']
         password = request.params['password']
-        if USERS.get(login) == password:
-            headers = remember(request, login)
-            return HTTPFound(location = came_from,
-                             headers = headers)
+        user = DBSession.query(User).filter_by(username=login).first()
+        if user:
+            salt = user.salt
+            encrypted_password = unicode(encrypt_password(password, str(salt)))
+            user2 = DBSession.query(User).filter_by(username=login)\
+                    .filter_by(password=encrypted_password).first()
+            if user2:
+                headers = remember(request, login)
+                return HTTPFound(location = came_from, headers = headers)
         message = 'Failed login'
-
     return dict(
         message = message,
         url = request.application_url + '/login',
@@ -502,4 +506,160 @@ def logout(request):
     headers = forget(request)
     return HTTPFound(location = request.route_url('view_main_page'),
                      headers = headers)
+
+
+@view_config(route_name='edit_user', renderer='templates/edit_user.pt',
+    permission='edit')
+def edit_user(request):
+    username = request.matchdict['username']
+    user = DBSession.query(User).filter_by(username=username).first()
+    if not user:
+        return HTTPNotFound('No such user: %s' % username)
+    if 'form.submitted' in request.params:
+        user.username = request.params['username'].strip()
+        password = request.params['password'].strip()
+        if password:
+            user.oldpassword = user.password
+            user.password = password
+        user.email = request.params['email'].strip()
+        user.groups = unicode(json.dumps(['group:editors']))
+        user.first_name = request.params['first_name'].strip()
+        user.last_name = request.params['last_name'].strip()
+        errors = validate_user(user)
+        if errors:
+            if getattr(user, 'oldpassword', None):
+                user.password = user.oldpassword
+            return dict(
+                user=user,
+                errors=errors,
+                logged_in=request.authenticated_userid,
+                submit_url=request.route_url('edit_user', username=user.username),
+                )
+        if password:
+            user.password = unicode(encrypt_password(user.password,
+                str(user.salt)))
+        DBSession.add(user)
+        return HTTPFound(location = request.route_url('view_user',
+            username=user.username))
+    return dict(
+        user=user,
+        errors={},
+        logged_in=request.authenticated_userid,
+        submit_url=request.route_url('edit_user', username=user.username),
+        )
+
+
+@view_config(route_name='add_user', renderer='templates/edit_user.pt',
+    permission='edit')
+def add_user(request):
+    if 'form.submitted' in request.params:
+        username = request.params['username'].strip()
+        password = request.params['password'].strip()
+        salt = generate_salt()
+        email = request.params['email'].strip()
+        groups = unicode(json.dumps(['group:editors']))
+        first_name = request.params['first_name'].strip()
+        last_name = request.params['last_name'].strip()
+        user = User(
+            username=username,
+            password=password,
+            salt=salt,
+            email=email,
+            groups=groups,
+            first_name=first_name,
+            last_name=last_name
+            )
+        errors = validate_user(user)
+        if errors:
+            return dict(
+                user=user,
+                errors=errors,
+                logged_in=request.authenticated_userid,
+                submit_url=request.route_url('add_user'),
+                )
+        user.password = unicode(encrypt_password(user.password, str(user.salt)))
+        DBSession.add(user)
+        return HTTPFound(location = request.route_url('view_user',
+            username=user.username))
+    return dict(
+        user=User(),
+        errors={},
+        logged_in=request.authenticated_userid,
+        submit_url=request.route_url('add_user'),
+        )
+
+
+@view_config(route_name='view_user', renderer='templates/view_user.pt',
+    permission='view')
+def view_user(request):
+    """View a specific user.
+
+    """
+
+    username = request.matchdict['username']
+    user = DBSession.query(User).filter_by(username=username).first()
+    if user is None:
+        return HTTPNotFound('No such user')
+    edit_url = request.route_url('edit_user', username=username)
+    login_url = request.route_url('login')
+    logout_url = request.route_url('logout')
+    return dict(
+        user=user,
+        logged_in=request.authenticated_userid,
+        edit_url=request.route_url('edit_user', username=username),
+        login_url=request.route_url('login'),
+        logout_url=request.route_url('logout')
+        )
+
+
+
+def validate_user(user):
+    errors = {}
+    username_error = validate_user_username(user)
+    if username_error:
+        errors['username'] = username_error
+    password_error = validate_user_password(user)
+    if password_error:
+        errors['password'] = password_error
+    if not user.email:
+        errors['email'] = 'An email address must be provided'
+    return errors
+
+
+def validate_user_username(user):
+    if not user.username:
+        return 'A username must be provided'
+    if len(user.username) < 4:
+        return 'A username must contain at least 4 characters'
+    badchars = [c for c in user.username if c not in string.digits +
+        string.letters + '_']
+    if badchars:
+        return 'A username can only contain letters, digits and the underscore'
+    existing_user = DBSession.query(User).filter_by(username=user.username)\
+        .first()
+    if existing_user and user.id != existing_user.id:
+        return ('There is already a user with the username %s. Please choose'
+            ' another.' % user.username)
+    return None
+
+
+def validate_user_password(user):
+    if getattr(user, 'id', None):
+        if not user.password:
+            return None
+        if user.password == getattr(user, 'oldpassword', None):
+            return None
+    digits = [c for c in user.password if c in string.digits]
+    uppercase = [c for c in user.password if c in string.uppercase]
+    lowercase = [c for c in user.password if c in string.lowercase]
+    punctuation = [c for c in user.password if c in string.punctuation]
+    if (len(user.password) < 10 or
+        len(digits) < 2 or
+        len(uppercase) < 2 or
+        len(lowercase) < 2 or
+        len(punctuation) < 2):
+        return ('Passwords must be at least 10 characters long and must contain'
+            ' at least 2 digits, 2 uppercase letters, 2 lowercase letters, and'
+            ' 2 punctuation characters.')
+    return None
 

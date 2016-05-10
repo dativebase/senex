@@ -1,0 +1,33 @@
+<metal:macro use-macro="master">
+  <metal:slot fill-slot="body">
+
+    <h2>User “${user.username}”</h2>
+
+    <p>
+      <a tal:attributes="href edit_url" href="">
+        Edit this user
+      </a>
+    </p>
+
+    <ul>
+
+      <li>
+        <label class="user-label" for="username">Username</label>
+        <div class="user-attr-display" name="username">${user.username}</div>
+      </li>
+
+      <li>
+        <label class="user-label" for="first_name">First Name</label>
+        <div class="user-attr-display" name="first_name">${user.first_name}</div>
+      </li>
+
+      <li>
+        <label class="user-label" for="last_name">Last Name</label>
+        <div class="user-attr-display" name="last_name">${user.last_name}</div>
+      </li>
+
+    </ul>
+
+  </metal:slot>
+</metal:macro>
+

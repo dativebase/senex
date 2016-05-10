@@ -53,10 +53,11 @@
 
         <div class="row">
           <div class="col-md-2">
-            <!-- <i class="fa fa-tachometer big-icon"></i> -->
+            <a href="${request.application_url}">
             <img class="logo img-responsive"
-              src="${request.static_url('senex:static/senex-logo.png')}"
+              src="${request.static_url('senex:static/senex-logo-2.png')}"
               alt="senex">
+            </a>
           </div>
           <div class="col-md-10">
             <div class="content">

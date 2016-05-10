@@ -1,0 +1,51 @@
+<metal:macro use-macro="master">
+  <metal:slot fill-slot="body">
+
+    <h2 tal:condition="bool(getattr(user, 'id'))">Editing the user
+      <strong>${user.username}</strong>.</h2>
+    <h2 tal:condition="not bool(getattr(user, 'id'))">Create a new user</h2>
+
+    <form class="edit-user-form" action="${submit_url}" method="post">
+
+      <div class="form-group">
+        <label for="username">Username*</label>
+        <input class="form-control" name="username" type="text"
+          value="${user.username}"></input>
+        <div class="error" tal:content="errors.get('username', '')"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password*</label>
+        <input class="form-control" name="password" type="password"
+          value=""></input>
+        <div class="error" tal:content="errors.get('password', '')"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email*</label>
+        <input class="form-control" name="email" type="text"
+          value="${user.email}"></input>
+        <div class="error" tal:content="errors.get('email', '')"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="first_name">First Name</label>
+        <input class="form-control" name="first_name" type="text"
+          value="${user.first_name}"></input>
+      </div>
+
+      <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <input class="form-control" name="last_name" type="text"
+          value="${user.last_name}"></input>
+      </div>
+
+      <div class="form-group">
+        <button type="submit" name="form.submitted" value="Save" class="btn
+          btn-default">Save</button>
+      </div>
+
+    </form>
+  </metal:slot>
+</metal:macro>
+

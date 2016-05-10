@@ -3,6 +3,7 @@ import os
 import sys
 from subprocess import Popen, PIPE, STDOUT
 from uuid import uuid4
+from passlib.hash import pbkdf2_sha512
 from .installold import (
     which,
     shell,
@@ -16,6 +17,15 @@ from .installold import (
 
 def generate_salt():
     return unicode(uuid4().hex)
+
+
+def encrypt_password(password, salt):
+    """Use PassLib's pbkdf2 implementation to generate a hash from a password.
+    Cf. http://packages.python.org/passlib/lib/passlib.hash.pbkdf2_digest.html#passlib.hash.pbkdf2_sha512
+
+    """
+
+    return pbkdf2_sha512.encrypt(password, salt=salt)
 
 
 def validate_mysql_credentials(params):

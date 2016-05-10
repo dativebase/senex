@@ -182,6 +182,23 @@
           </tbody>
         </table>
 
+        <h2>Users</h2>
+        <p><a href="${request.route_url('add_user')}"
+          class="create-new-user">Create a new user</a></p>
+        <table tal:condition="len(users) > 0" class="info-table users-summary">
+          <tbody>
+            <tr tal:repeat="user users">
+              <td><a href="${request.route_url('view_user', username=user.username)}"
+                  >${user.username}</a></td>
+              <td><a href="${request.route_url('view_user', username=user.username)}"
+                  >${user.first_name}</a></td>
+              <td><a href="${request.route_url('view_user', username=user.username)}"
+                  >${user.last_name}</a></td>
+            </tr>
+          </tbody>
+        </table>
+        <p tal:condition="len(users) == 0">There are no users.</p>
+
       </div>
 
       <div style="height: 2em;"></div>
