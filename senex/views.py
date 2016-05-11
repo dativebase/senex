@@ -401,11 +401,12 @@ def add_old(request):
         if warnings:
             print ('There is something wrong with Senex\'s state so we cannot'
                 ' build this OLD')
+            print warnings
         else:
             print ('There is nothing wrong with Senex\'s state so we can build'
                 ' this OLD')
             try:
-                url = build(build_params, False)
+                url, port = build(build_params, False)
             except SystemExit as e:
                 print ('This error occurred when attempting to build the OLD'
                     ' %s: %s' % (old.name, e))
@@ -416,6 +417,7 @@ def add_old(request):
                 old.built = True
                 old.running = True
                 old.url = url
+                old.port = port
         DBSession.add(old)
         return HTTPFound(location = request.route_url('view_old', oldname=old.name))
     old = OLD(name='')
@@ -440,6 +442,11 @@ def get_build_params(old):
     env_dir = senex_state.env_dir
     paster_path = os.path.join(os.path.expanduser('~'), env_dir, 'bin',
             'paster')
+    olds = DBSession.query(OLD).all()
+    print 'getting used ports'
+    used_ports = dict([(o.dir_name, o.port) for o in olds])
+    print 'got used ports'
+    print used_ports
     return {
         'old_name': old.name,
         'old_dir_name': old.dir_name,
@@ -447,11 +454,13 @@ def get_build_params(old):
         'mysql_pwd': senex_state.mysql_pwd,
         'paster_path': paster_path,
         'apps_path': senex_state.apps_path,
+        'server': senex_state.server,
         'vh_path': senex_state.vh_path,
         'ssl_crt_path': senex_state.ssl_crt_path,
         'ssl_key_path': senex_state.ssl_key_path,
         'ssl_pem_path': senex_state.ssl_pem_path,
         'host': senex_state.host,
+        'used_ports': used_ports,
         'actions': [] # remembers what we've done, in case abort needed.
     }
 

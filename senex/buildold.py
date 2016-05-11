@@ -153,6 +153,70 @@ def catcherror(func):
 
 
 def write_updated_virtual_hosts_file_to_tmp(params):
+    """Update the virtual hosts file at `params['vh_path']` and write it
+    to /tmp/.
+
+    """
+
+    if params.get('server') == 'nginx':
+        write_updated_nginx_virtual_hosts_file_to_tmp(params)
+    else:
+        write_updated_apache_virtual_hosts_file_to_tmp(params)
+
+
+def get_nginx_location_block(dir_name, port):
+    return """location = /%s {
+        return 302 /%s/;
+    }
+
+    location /%s/ {
+        proxy_set_header        Host $http_host;
+        proxy_set_header        X-Real-IP $remote_addr;
+        proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header        X-Forwarded-Proto $scheme;
+        client_max_body_size    10m;
+        client_body_buffer_size 128k;
+        proxy_connect_timeout   60s;
+        proxy_send_timeout      90s;
+        proxy_read_timeout      90s;
+        proxy_buffering         off;
+        proxy_temp_file_write_size 64k;
+        proxy_redirect          off;
+        proxy_pass              http://localhost:%s/;
+    }
+    """ % (dir_name, dir_name, dir_name, port)
+
+
+def write_updated_nginx_virtual_hosts_file_to_tmp(params):
+    tmp_vhs_path = '/tmp/new_old_virtual_hosts_config'
+    used_ports = params['used_ports'].copy()
+    used_ports[params['old_dir_name']] = params['old_port']
+    location_blocks = '\n\n    '.join([get_nginx_location_block(dir_name, port)
+        for dir_name, port in used_ports.items()])
+    with open(tmp_vhs_path, 'w') as fo:
+        fo.write('''server {
+    listen 80;
+    server_name %s;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    ssl_certificate %s;
+    ssl_certificate_key %s;
+    server_name  %s;
+    access_log  %s/log/access.log;
+
+    %s
+
+}
+    ''' % (params['host'], params['ssl_crt_path'], params['ssl_key_path'],
+        params['host'], params['apps_path'], location_blocks))
+
+    return tmp_vhs_path
+
+
+def write_updated_apache_virtual_hosts_file_to_tmp(params):
     """Update the Apache virtual hosts file at `params['vh_path']` and write it
     to /tmp/.
 
@@ -248,10 +312,77 @@ def get_http_virtual_host_file(params, proxy_lines):
 
 @catcherror
 def add_virtual_host(params):
-    """Create the Apache virtual host for the OLD app.
+    """Create the virtual host config for the OLD app.
 
     """
 
+    if params.get('server') == 'nginx':
+        add_nginx_virtual_host(params)
+    else:
+        add_apache_virtual_host(params)
+
+
+@catcherror
+def add_nginx_virtual_host(params):
+    print 'Modifying Nginx virtual hosts file.'
+    tmp_vhs_path = write_updated_nginx_virtual_hosts_file_to_tmp(params)
+    if os.path.isfile(params['vh_path']):
+        r = os.system('sudo mv %s %s_bk' % (params['vh_path'], params['vh_path']))
+        print ('%sThe virtual hosts file %s already existed; we moved the'
+            ' pre-modified version of it to %s_bk.%s' % (ANSI_WARNING,
+            params['vh_path'], params['vh_path'], ANSI_ENDC))
+    r = os.system('sudo mv %s %s' % (tmp_vhs_path, params['vh_path']))
+    try:
+        assert r == 0
+        params['actions'].append('virtual hosts file modified')
+    except:
+        vhs_content = ''
+        if os.path.isfile(tmp_vhs_path):
+            with open(tmp_vhs_path) as f:
+                vhs_content = f.read()
+        abort(params)
+        if vhs_content:
+            sys.exit('%sUnable to configure the virtual host. Maybe you can do'
+                ' it manually. The file at %s should look like this:'
+                '\n\n%s%s' % (ANSI_FAIL, params['vh_path'], vhs_content, ANSI_ENDC))
+        else:
+            sys.exit('%sUnable to configure the virtual host.%s' % (ANSI_FAIL,
+                ANSI_ENDC))
+    # If not enabled, we enable the virtual hosts config file here.
+    enable_nginx_virtual_hosts_config(params)
+
+
+def enable_nginx_virtual_hosts_config(params):
+    """If the user-specified Nginx virtual hosts config file is not enabled,
+    i.e., symlinked, we enable it here.
+
+    WARNING: this is very brittle as it assumes that we can check if a config
+    file is enabled simply by replacing 'sites-available' in its path with
+    'sites-enabled' and checking if that path points to a file.
+
+    sudo ln -s /etc/nginx/sites-available/<host> /etc/nginx/sites-enabled/<host>
+
+    """
+
+
+    fail_msg = ('%sUnable to enable your Nginx virtual hosts config'
+        ' file. Do it manually by running `sudo ln -s'
+        ' /etc/nginx/sites-available/%s /etc/nginx/sites-enabled/%s`'
+        '.%s' % (ANSI_WARNING, params['host'], params['host'], ANSI_ENDC))
+    sl_path = params['vh_path'].replace('sites-available', 'sites-enabled')
+    if (not os.path.isfile(sl_path)) or (not os.path.islink(sl_path)):
+        try:
+            print 'Enabling the Nginx virtual hosts config file.'
+            enableconfig = Popen(['sudo', 'ln', '-s', params['vh_path'],
+                sl_path], stdout=PIPE, stderr=STDOUT)
+            stdout, nothing = enableconfig.communicate()
+            # Note: no verification that the symbolic link worked.
+        except:
+            print fail_msg
+
+
+@catcherror
+def add_apache_virtual_host(params):
     print 'Modifying Apache virtual hosts file.'
     tmp_vhs_path = write_updated_virtual_hosts_file_to_tmp(params)
     if os.path.isfile(params['vh_path']):
@@ -276,12 +407,11 @@ def add_virtual_host(params):
         else:
             sys.exit('%sUnable to configure the virtual host.%s' % (ANSI_FAIL,
                 ANSI_ENDC))
-
     # If not enabled, we enable the virtual hosts config file here.
-    enable_virtual_hosts_config(params)
+    enable_apache_virtual_hosts_config(params)
 
 
-def enable_virtual_hosts_config(params):
+def enable_apache_virtual_hosts_config(params):
     """If the user-specified Apache virtual hosts config file is not enabled,
     we enable it here.
 
@@ -329,6 +459,7 @@ def restore_virtual_hosts_file(params):
                 params['vh_path']))
             try:
                 assert r == 0
+                # TODO: replace this with `restart_server(params)`
                 restart_apache(params)
             except:
                 print fail_msg
@@ -340,6 +471,31 @@ def restore_virtual_hosts_file(params):
             ' requests to %s.%s' % (ANSI_WARNING, params['vh_path'],
             params['old_dir_name'], ANSI_ENDC))
 
+
+@catcherror
+def restart_server(params):
+    if params.get('server') == 'nginx':
+        reload_nginx(params)
+    else:
+        restart_apache(params)
+
+
+@catcherror
+def reload_nginx(params):
+    """Reload the Nginx server so that the new virtual hosts file can take
+    effect.
+
+    """
+
+    print 'Reloading the Nginx server.'
+    nginxrestart = Popen(['sudo', 'nginx', '-s', 'reload'],
+        stdout=PIPE, stderr=STDOUT)
+    stdout, nothing = nginxrestart.communicate()
+    try:
+        assert '' == str(stdout).strip()
+    except:
+        print ('%sSomething went wrong when trying to reload Nginx. Error msg:'
+            ' %s.%s' % (ANSI_WARNING, stdout, ANSI_ENDC))
 
 @catcherror
 def restart_apache(params):
@@ -370,7 +526,14 @@ def get_available_ports(params):
 
 
 def get_used_ports(params):
-    """Inspect the file at `params['vh_path']` and return the list of USED ports.
+    return params.get('used_ports', {}).values()
+
+
+def _get_used_ports(params):
+    """DEPRECATED: this state is now saved in Senex's db.
+
+    Inspect the file at `params['vh_path']` and return the list
+    of USED ports.
 
     """
 
@@ -771,7 +934,10 @@ def create_dirs(params):
     general_log_path = os.path.join(params['apps_path'], 'log')
     create_directory_safely(params['apps_path'])
     create_directory_safely(general_log_path)
+    print 'gonna create this dir %s' % params['old_path']
+    print 'it exists: %s' % os.path.isdir(params['old_path'])
     create_directory_safely(params['old_path'])
+    print 'it exists after creation: %s' % os.path.isdir(params['old_path'])
     create_directory_safely(log_path)
     params['actions'].append('created old directory')
 
@@ -785,9 +951,9 @@ def make_config(params):
 
     print 'Creating the OLD config file.'
     cnf_pth = os.path.join(params['old_path'], 'production.ini')
-    cmd = '%s make-config onlinelinguisticdatabase %s' % (
-        params['paster_path'], cnf_pth)
-    resp = os.popen(cmd).read()
+    cmd = [params['paster_path'], 'make-config', 'onlinelinguisticdatabase', cnf_pth]
+    makeconf = Popen(cmd, stdout=PIPE, stderr=STDOUT, cwd=os.path.expanduser('~'))
+    resp, nothing = makeconf.communicate()
     fail_msg = '%sUnable to create the OLD config file. Aborting.%s' % (
         ANSI_FAIL, ANSI_ENDC)
     try:
@@ -1282,6 +1448,10 @@ def build(params, do_save_state=True):
         params['old_dir_name'])
     params['db_name'] = params['old_dir_name']
 
+    print '\n\n'
+    pprint.pprint(params)
+    print '\n\n'
+
     create_dirs(params)
     make_config(params)
     create_database(params)
@@ -1290,18 +1460,30 @@ def build(params, do_save_state=True):
     fix_tag_name_col(params)
     serve(params)
     add_virtual_host(params)
-    restart_apache(params)
+    restart_server(params)
     create_cronjob(params)
     init_script(params)
     if do_save_state:
         save_state(params)
+
+    print '''
+- created directories
+- made config (.ini) file
+- created MySQL databse
+- edited the config (.ini) file
+- ran paster's setup-app to create the database tables
+- fixed the tag table's name column
+- served the old!
+- added the virtual host ...
+'''
 
     print ('The %s OLD is being served at %shttps://%s/%s%s.\nIts files are'
         ' stored at %s%s%s.' % (params['old_name'], ANSI_OKGREEN, params['host'],
         params['old_dir_name'], ANSI_ENDC, ANSI_OKGREEN,
         os.path.join(params['apps_path'], params['old_dir_name']), ANSI_ENDC))
     print 'Done.'
-    return 'https://%s/%s' % (params['host'], params['db_name'])
+    return ('https://%s/%s' % (params['host'], params['db_name']),
+        params['old_port'])
 
 
 @catcherror

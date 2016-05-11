@@ -39,7 +39,7 @@ Base = declarative_base()
 DEFAULT_ENV_DIR = u'env-old'
 DEFAULT_APPS_DIR = u'oldapps'
 DEFAULT_SSL_DIR = u'sslcert'
-DEFAULT_VH_PATH = u'/etc/apache2/sites-available/olds'
+DEFAULT_VH_PATH = u'/etc/nginx/sites-available/olds'
 
 
 def get_default_dependency_state():
@@ -62,6 +62,7 @@ class OLD(Base):
     human_name = Column(Text)
     url = Column(Text, default='')
     built = Column(Boolean, default=False)
+    port = Column(Text, unique=True)
     running = Column(Boolean, default=False)
 
 

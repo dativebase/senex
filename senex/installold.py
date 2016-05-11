@@ -645,7 +645,9 @@ def test_PIL(params):
 
     if pil_installed(params):
         flush('Testing PIL ...')
-        pil_tests_path = os.path.join(get_script_dir_path(), 'tests', 'pil.py')
+        pil_tests_dir = os.path.join(get_script_dir_path(), 'tests')
+        create_directory_safely(pil_tests_dir)
+        pil_tests_path = os.path.join(pil_tests_dir, 'pil.py')
         with open(pil_tests_path, 'w') as f:
             f.write(get_pil_tests(get_script_dir_path()))
         stdout = shell([get_python_path(params), pil_tests_path])

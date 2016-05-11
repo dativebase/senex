@@ -17,6 +17,8 @@
             <tr>
               <th>Name</th>
               <th>Human-readable Name</th>
+              <th>URL</th>
+              <th>Port</th>
               <th>Running</th>
             </tr>
           </thead>
@@ -24,6 +26,8 @@
             <tr tal:repeat="old olds">
               <td tal:content="old.name"></td>
               <td tal:content="old.human_name"></td>
+              <td tal:content="old.url"></td>
+              <td tal:content="old.port"></td>
               <td tal:content="old.running"></td>
             </tr>
           </tbody>
