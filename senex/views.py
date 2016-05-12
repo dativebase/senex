@@ -31,6 +31,7 @@ from pyramid.httpexceptions import (
 from pyramid.view import (
     view_config,
     forbidden_view_config,
+    notfound_view_config,
 )
 
 from pyramid.security import (
@@ -262,7 +263,7 @@ def install_old():
 
 
 @view_config(route_name='return_status', renderer='json',
-    permission='view')
+    permission='edit')
 def return_status(request):
     """Return a JSON object indicating the status of Senex, in particular
     whether an installation is in progress. This is called asynchronously by
@@ -343,7 +344,7 @@ def get_view_old_msg(request):
 
 
 @view_config(route_name='view_old', renderer='templates/view_old.pt',
-    permission='view')
+    permission='edit')
 def view_old(request):
     """View a specific OLD.
 
@@ -353,7 +354,7 @@ def view_old(request):
     old = DBSession.query(OLD).filter_by(name=oldname).first()
     msg = get_view_old_msg(request)
     if old is None:
-        return HTTPNotFound('No such OLD')
+        raise HTTPNotFound('No such OLD')
     edit_url = request.route_url('edit_old', oldname=oldname)
     login_url = request.route_url('login')
     logout_url = request.route_url('logout')
@@ -404,7 +405,7 @@ def stop_old(request):
     oldname = request.matchdict['oldname']
     old = DBSession.query(OLD).filter_by(name=oldname).first()
     if not old:
-        return HTTPNotFound('No such OLD: %s' % oldname)
+        raise HTTPNotFound('No such OLD: %s' % oldname)
     if not old.built:
         location = '%s?msg=notbuiltnostop' % request.route_url(
             'view_old', oldname=old.name)
@@ -442,7 +443,7 @@ def start_old(request):
     oldname = request.matchdict['oldname']
     old = DBSession.query(OLD).filter_by(name=oldname).first()
     if not old:
-        return HTTPNotFound('No such OLD: %s' % oldname)
+        raise HTTPNotFound('No such OLD: %s' % oldname)
     if not old.built:
         location = '%s?msg=notbuiltnostart' % request.route_url(
             'view_old', oldname=old.name)
@@ -573,6 +574,12 @@ def edit_old(request):
         save_url=request.route_url('edit_old', oldname=oldname))
 
 
+@notfound_view_config(renderer='templates/notfound.pt')
+def notfound(request):
+    request.response.status = '404 Not Found'
+    return dict(msg='That page does not exist.')
+
+
 @view_config(route_name='login', renderer='templates/login.pt')
 @forbidden_view_config(renderer='templates/login.pt')
 def login(request):
@@ -618,7 +625,7 @@ def edit_user(request):
     username = request.matchdict['username']
     user = DBSession.query(User).filter_by(username=username).first()
     if not user:
-        return HTTPNotFound('No such user: %s' % username)
+        raise HTTPNotFound('No such user: %s' % username)
     if 'form.submitted' in request.params:
         user.username = request.params['username'].strip()
         password = request.params['password'].strip()
@@ -694,7 +701,7 @@ def add_user(request):
 
 
 @view_config(route_name='view_user', renderer='templates/view_user.pt',
-    permission='view')
+    permission='edit')
 def view_user(request):
     """View a specific user.
 
@@ -703,7 +710,7 @@ def view_user(request):
     username = request.matchdict['username']
     user = DBSession.query(User).filter_by(username=username).first()
     if user is None:
-        return HTTPNotFound('No such user')
+        raise HTTPNotFound('No such user')
     edit_url = request.route_url('edit_user', username=username)
     login_url = request.route_url('login')
     logout_url = request.route_url('logout')

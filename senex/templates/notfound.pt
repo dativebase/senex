@@ -1,0 +1,10 @@
+<metal:macro use-macro="master">
+  <metal:slot fill-slot="body">
+
+    <h2>404 Not Found</h2>
+
+    <p>${msg}</p>
+
+  </metal:slot>
+</metal:macro>
+
