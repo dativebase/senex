@@ -108,6 +108,9 @@ p {
   }
 }
 @media (max-width: 991px) {
+  img.logo {
+    display: none;
+  }
   .starter-template {
     margin-top: 0;
   }
@@ -289,4 +292,21 @@ button.show-settings-display
 {
   display: inline-block;
 }
+
+table.olds-summary a
+{
+  text-decoration: none;
+}
+
+p.old-controls a
+{
+  padding-right: 1em;
+}
+
+td.label-cell
+{
+  text-align: right;
+  padding-right: 0.5em;
+}
+
 

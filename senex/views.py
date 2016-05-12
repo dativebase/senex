@@ -8,6 +8,10 @@ import string
 
 from .buildold import (
     build,
+    disable_cronjob,
+    stop_serving,
+    add_virtual_host,
+    restart_server,
     get_dir_name_from_old_name,
     )
 
@@ -325,6 +329,19 @@ def view_main_page(request):
     else:
         return dict(logged_in=logged_in)
 
+
+def get_view_old_msg(request):
+    if request.params.get('msg'):
+        return {
+            'notbuiltnostart':
+                'This OLD has not been built so it cannot be started.',
+            'notbuiltnostop':
+                'This OLD has not been built so it cannot be stopped.'
+
+            }.get(request.params['msg'], None)
+    return None
+
+
 @view_config(route_name='view_old', renderer='templates/view_old.pt',
     permission='view')
 def view_old(request):
@@ -334,6 +351,7 @@ def view_old(request):
 
     oldname = request.matchdict['oldname']
     old = DBSession.query(OLD).filter_by(name=oldname).first()
+    msg = get_view_old_msg(request)
     if old is None:
         return HTTPNotFound('No such OLD')
     edit_url = request.route_url('edit_old', oldname=oldname)
@@ -341,6 +359,7 @@ def view_old(request):
     logout_url = request.route_url('logout')
     return dict(
         old=old,
+        msg=msg,
         logged_in=request.authenticated_userid,
         edit_url=request.route_url('edit_old', oldname=oldname),
         login_url=request.route_url('login'),
@@ -372,9 +391,101 @@ def validate_old_name(old):
     return None
 
 
+@view_config(route_name='stop_old', renderer='templates/view_old.pt',
+    permission='edit')
+def stop_old(request):
+    """Stop the OLD from being served, if it is being served. This should
+    redirect requests to this OLD to some kind of error page so that users can
+    see that they have the URL correct but that this particular OLD has just
+    been stopped, probably temporarily.
+
+    """
+
+    oldname = request.matchdict['oldname']
+    old = DBSession.query(OLD).filter_by(name=oldname).first()
+    if not old:
+        return HTTPNotFound('No such OLD: %s' % oldname)
+    if not old.built:
+        location = '%s?msg=notbuiltnostop' % request.route_url(
+            'view_old', oldname=old.name)
+        return HTTPFound(location=location)
+    build_params, warnings = get_build_params_and_warnings(old)
+    build_params['old_port'] = old.port
+    if not warnings:
+        try:
+            existing_olds = DBSession.query(OLD).all()
+            for existing_old in existing_olds:
+                if existing_old.name == old.name:
+                    existing_old.running = False
+            build_params['existing_olds'] = existing_olds
+            add_virtual_host(build_params)
+            restart_server(build_params)
+        except SystemExit as e:
+            print ('This error occurred when attempting to stop the OLD'
+                ' %s: %s' % (old.name, e))
+        except Exception as e:
+            print ('This error occurred when attempting to stop the OLD'
+                ' %s: %s' % (old.name, e))
+        else:
+            old.running = False
+    DBSession.add(old)
+    return HTTPFound(location = request.route_url('view_old', oldname=old.name))
+
+
+@view_config(route_name='start_old', renderer='templates/view_old.pt',
+    permission='edit')
+def start_old(request):
+    """Start a stopped OLD.
+
+    """
+
+    oldname = request.matchdict['oldname']
+    old = DBSession.query(OLD).filter_by(name=oldname).first()
+    if not old:
+        return HTTPNotFound('No such OLD: %s' % oldname)
+    if not old.built:
+        location = '%s?msg=notbuiltnostart' % request.route_url(
+            'view_old', oldname=old.name)
+        return HTTPFound(location=location)
+    build_params, warnings = get_build_params_and_warnings(old)
+    build_params['old_port'] = old.port
+    if not warnings:
+        try:
+            existing_olds = DBSession.query(OLD).all()
+            for existing_old in existing_olds:
+                if existing_old.name == old.name:
+                    existing_old.running = True
+            build_params['existing_olds'] = existing_olds
+            add_virtual_host(build_params)
+            restart_server(build_params)
+        except SystemExit as e:
+            print ('This error occurred when attempting to stop the OLD'
+                ' %s: %s' % (old.name, e))
+        except Exception as e:
+            print ('This error occurred when attempting to stop the OLD'
+                ' %s: %s' % (old.name, e))
+        else:
+            old.running = True
+    DBSession.add(old)
+    return HTTPFound(location = request.route_url('view_old', oldname=old.name))
+
+
+def get_build_params_and_warnings(old):
+    build_params = get_build_params(old)
+    server_state, dependency_state, settings, installation_in_progress = \
+        get_state(True)
+    warnings = get_warnings(server_state, dependency_state, settings)
+    warnings = validate_settings(settings, warnings)
+    return build_params, warnings
+
+
 @view_config(route_name='add_old', renderer='templates/edit_old.pt',
     permission='edit')
 def add_old(request):
+    """Either create a new OLD or display the form for creating one.
+
+    """
+
     if 'form.submitted' in request.params:
         name = request.params['name'].strip()
         dir_name = get_dir_name_from_old_name(name)
@@ -382,53 +493,34 @@ def add_old(request):
         old = OLD(name=name, dir_name=dir_name, human_name=human_name)
         errors = validate_old(old)
         if errors:
-            print 'There are errors in this OLD so we cannot add it.'
-            print errors
-            return dict(
-                old=old,
-                errors=errors,
+            return dict(old=old, errors=errors,
                 logged_in=request.authenticated_userid,
-                save_url=request.route_url('add_old'),
-                login_url=request.route_url('login'),
-                logout_url=request.route_url('logout')
-                )
-
-        build_params = get_build_params(old)
-        server_state, dependency_state, settings, installation_in_progress = \
-            get_state(True)
-        warnings = get_warnings(server_state, dependency_state, settings)
-        warnings = validate_settings(settings, warnings)
-        if warnings:
-            print ('There is something wrong with Senex\'s state so we cannot'
-                ' build this OLD')
-            print warnings
-        else:
-            print ('There is nothing wrong with Senex\'s state so we can build'
-                ' this OLD')
+                save_url=request.route_url('add_old'))
+        build_params, warnings = get_build_params_and_warnings(old)
+        if not warnings:
             try:
+                existing_olds = DBSession.query(OLD).all()
+                old.running = True
+                existing_olds.append(old)
+                build_params['existing_olds'] = existing_olds
                 url, port = build(build_params, False)
             except SystemExit as e:
                 print ('This error occurred when attempting to build the OLD'
                     ' %s: %s' % (old.name, e))
+                old.running = False
             except Exception as e:
                 print ('This error occurred when attempting to build the OLD'
                     ' %s: %s' % (old.name, e))
+                old.running = False
             else:
                 old.built = True
-                old.running = True
                 old.url = url
                 old.port = port
         DBSession.add(old)
         return HTTPFound(location = request.route_url('view_old', oldname=old.name))
     old = OLD(name='')
-    return dict(
-        old=old,
-        errors={},
-        logged_in=request.authenticated_userid,
-        save_url=request.route_url('add_old'),
-        login_url=request.route_url('login'),
-        logout_url=request.route_url('logout')
-        )
+    return dict(old=old, errors={}, logged_in=request.authenticated_userid,
+        save_url=request.route_url('add_old'))
 
 
 def get_build_params(old):
@@ -443,10 +535,7 @@ def get_build_params(old):
     paster_path = os.path.join(os.path.expanduser('~'), env_dir, 'bin',
             'paster')
     olds = DBSession.query(OLD).all()
-    print 'getting used ports'
     used_ports = dict([(o.dir_name, o.port) for o in olds])
-    print 'got used ports'
-    print used_ports
     return {
         'old_name': old.name,
         'old_dir_name': old.dir_name,
@@ -465,26 +554,24 @@ def get_build_params(old):
     }
 
 
-
 @view_config(route_name='edit_old', renderer='templates/edit_old.pt',
     permission='edit')
 def edit_old(request):
+    """Edit an existing OLD or display the form for editing one. Note: only the
+    `human_name` of an OLD can be edited.
+
+    """
+
     oldname = request.matchdict['oldname']
     old = DBSession.query(OLD).filter_by(name=oldname).first()
     if 'form.submitted' in request.params:
-        # TODO: use request params to modify `old` with form input values.
-        # old.data = request.params['body']
         old.human_name = request.params['human_name']
         DBSession.add(old)
         return HTTPFound(location = request.route_url('view_old',
                                                       oldname=oldname))
-    return dict(
-        old=old,
-        logged_in=request.authenticated_userid,
-        save_url=request.route_url('edit_old', oldname=oldname),
-        login_url=request.route_url('login'),
-        logout_url=request.route_url('logout')
-        )
+    return dict(old=old, errors={}, logged_in=request.authenticated_userid,
+        save_url=request.route_url('edit_old', oldname=oldname))
+
 
 @view_config(route_name='login', renderer='templates/login.pt')
 @forbidden_view_config(renderer='templates/login.pt')

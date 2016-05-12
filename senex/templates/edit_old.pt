@@ -1,16 +1,19 @@
 <metal:macro use-macro="master">
   <metal:slot fill-slot="body">
 
-    <h2 tal:condition="bool(getattr(old, 'name'))">Editing the <strong>${old.name}</strong>
-      OLD.</h2>
-    <h2 tal:condition="not bool(getattr(old, 'name'))">Create a New OLD</h2>
+    <h2 tal:condition="bool(getattr(old, 'id'))">Editing the
+      <strong>${old.name}</strong> OLD.</h2>
+    <h2 tal:condition="not bool(getattr(old, 'id'))">Create a New OLD</h2>
 
     <form class="edit-old-form" action="${save_url}" method="post">
 
       <div class="form-group">
         <label for="name">Name</label>
-        <input class="form-control" name="name" type="text"
-          value="${old.name}"></input>
+        <input tal:condition="getattr(old, 'id')" class="form-control"
+          name="name" type="text" value="${old.name}" disabled></input>
+        <input tal:condition="not getattr(old, 'id')" class="form-control"
+          name="name" type="text" value="${old.name}"></input>
+        <div class="error" tal:content="errors.get('name', '')"></div>
       </div>
 
       <div class="form-group">
@@ -19,6 +22,7 @@
           value="${old.human_name}"></input>
       </div>
 
+      <!--
       <div class="form-group">
         <label for="state">State</label>
         <select class="form-control" name="state">
@@ -26,6 +30,7 @@
           <option value="stopped">Stopped</option>
         </select>
       </div>
+      -->
 
       <div class="form-group">
         <button type="submit" name="form.submitted" value="Save" class="btn

@@ -19,16 +19,28 @@
               <th>Human-readable Name</th>
               <th>URL</th>
               <th>Port</th>
+              <th>Built</th>
               <th>Running</th>
             </tr>
           </thead>
           <tbody>
             <tr tal:repeat="old olds">
-              <td tal:content="old.name"></td>
-              <td tal:content="old.human_name"></td>
-              <td tal:content="old.url"></td>
-              <td tal:content="old.port"></td>
-              <td tal:content="old.running"></td>
+              <td><a href="${request.route_url('view_old', oldname=old.name)}">${old.name}</a></td>
+              <td><a href="${request.route_url('view_old', oldname=old.name)}">${old.human_name}</a></td>
+              <td><a target="_blank" href="${old.url}">${old.url}</a></td>
+              <td><a href="${request.route_url('view_old', oldname=old.name)}">${old.port}</a></td>
+              <td tal:condition="old.built"><a
+                href="${request.route_url('view_old', oldname=old.name)}"><i
+                class="ok fa fa-fw fa-check-circle"></i></a></td>
+              <td tal:condition="not old.built"><a
+                href="${request.route_url('view_old', oldname=old.name)}"><i
+                class="error fa fa-fw fa-times-circle"></i></a></td>
+              <td tal:condition="old.running"><a
+                href="${request.route_url('view_old', oldname=old.name)}"><i
+                class="ok fa fa-fw fa-check-circle"></i></a></td>
+              <td tal:condition="not old.running"><a
+                href="${request.route_url('view_old', oldname=old.name)}"><i
+                class="error fa fa-fw fa-times-circle"></i></a></td>
             </tr>
           </tbody>
         </table>
@@ -93,10 +105,10 @@
                 >${setting_labels_human.get(setting, setting)}</label>
               <input tal:condition="setting != 'mysql_pwd'"
                 class="form-control" name="${setting}"
-                value="${setting_value}"></input>
+                value="${setting_value}" type="text"></input>
               <input tal:condition="setting == 'mysql_pwd'"
                 class="form-control" name="${setting}"
-                value=""></input>
+                value="" type="password"></input>
             </div>
             <input type="hidden" name="edit.settings" value="True"></input>
             <div class="form-group">

@@ -60,6 +60,8 @@ def main(global_config, **settings):
     config.add_route('add_old', '/olds/add')
     config.add_route('view_old', '/olds/{oldname}')
     config.add_route('edit_old', '/olds/{oldname}/edit')
+    config.add_route('stop_old', '/olds/{oldname}/stop')
+    config.add_route('start_old', '/olds/{oldname}/start')
 
     config.add_route('add_user', '/users/add')
     config.add_route('view_user', '/users/{username}')

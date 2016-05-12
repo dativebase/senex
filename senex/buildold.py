@@ -69,10 +69,6 @@ Warnings
 TODOs
 ================================================================================
 
-1. functionality for:
-    - stop serving and redirect to error page.
-    - start serving an already-built OLD.
-
 """
 
 import re
@@ -152,18 +148,6 @@ def catcherror(func):
     return new_func
 
 
-def write_updated_virtual_hosts_file_to_tmp(params):
-    """Update the virtual hosts file at `params['vh_path']` and write it
-    to /tmp/.
-
-    """
-
-    if params.get('server') == 'nginx':
-        write_updated_nginx_virtual_hosts_file_to_tmp(params)
-    else:
-        write_updated_apache_virtual_hosts_file_to_tmp(params)
-
-
 def get_nginx_location_block(dir_name, port):
     return """location = /%s {
         return 302 /%s/;
@@ -187,12 +171,31 @@ def get_nginx_location_block(dir_name, port):
     """ % (dir_name, dir_name, dir_name, port)
 
 
+def get_nginx_503_location_block(dir_name, port):
+    return """    location = /%s {
+        return 302 /%s/;
+    }
+
+    location /%s/ {
+        return 503;
+    }
+    """ % (dir_name, dir_name, dir_name)
+
+
 def write_updated_nginx_virtual_hosts_file_to_tmp(params):
     tmp_vhs_path = '/tmp/new_old_virtual_hosts_config'
-    used_ports = params['used_ports'].copy()
-    used_ports[params['old_dir_name']] = params['old_port']
-    location_blocks = '\n\n    '.join([get_nginx_location_block(dir_name, port)
-        for dir_name, port in used_ports.items()])
+    for old in params['existing_olds']:
+        if old.dir_name == params['old_dir_name']:
+            if params.get('old_port') and not old.port:
+                old.port = params['old_port']
+    running_location_blocks = '\n\n   '.join(
+        [get_nginx_location_block(old.dir_name, old.port) for old
+            in params['existing_olds'] if old.running])
+    stopped_location_blocks = '\n\n   '.join(
+        [get_nginx_503_location_block(old.dir_name, old.port) for old
+            in params['existing_olds'] if not old.running])
+    location_blocks = '%s\n\n%s' % (running_location_blocks,
+        stopped_location_blocks)
     with open(tmp_vhs_path, 'w') as fo:
         fo.write('''server {
     listen 80;
@@ -324,6 +327,13 @@ def add_virtual_host(params):
 
 @catcherror
 def add_nginx_virtual_host(params):
+    """Write the Nginx virtual hosts file given the data in `params`, in
+    particular `params['existing_olds']`. If an OLD model object has a truthy
+    `running` attribute, we proxy requests to Paster; otherwise we return a 503
+    page since that OLD is (temporarily) stopped.
+
+    """
+
     print 'Modifying Nginx virtual hosts file.'
     tmp_vhs_path = write_updated_nginx_virtual_hosts_file_to_tmp(params)
     if os.path.isfile(params['vh_path']):
@@ -384,7 +394,7 @@ def enable_nginx_virtual_hosts_config(params):
 @catcherror
 def add_apache_virtual_host(params):
     print 'Modifying Apache virtual hosts file.'
-    tmp_vhs_path = write_updated_virtual_hosts_file_to_tmp(params)
+    tmp_vhs_path = write_updated_apache_virtual_hosts_file_to_tmp(params)
     if os.path.isfile(params['vh_path']):
         r = os.system('sudo mv %s %s_bk' % (params['vh_path'], params['vh_path']))
         print ('%sThe virtual hosts file %s already existed; we moved the'
@@ -459,8 +469,7 @@ def restore_virtual_hosts_file(params):
                 params['vh_path']))
             try:
                 assert r == 0
-                # TODO: replace this with `restart_server(params)`
-                restart_apache(params)
+                restart_server(params)
             except:
                 print fail_msg
         else:
@@ -1004,11 +1013,8 @@ def serve(params):
 
     print 'Starting the paster server.'
     cmd = get_serve_command(params)
-    print '\n%s\n' % ' '.join(cmd)
-    # resp = os.popen(cmd).read()
     serve = Popen(cmd, stdout=PIPE, stderr=STDOUT, cwd=params['old_path'])
     resp, nothing = serve.communicate()
-    # FOX
     try:
         assert resp.strip() == ''
         params['actions'].append('served app')
@@ -1034,6 +1040,7 @@ def stop_serving(params):
         resp, nothing = stopserve.communicate()
         try:
             assert resp.strip() == ''
+            return True
         except Exception, e:
             print ('Error: the output from stopping the paster server is not'
                 ' empty:')
@@ -1054,6 +1061,43 @@ def get_cronjob_cmd(params):
 
     return 'cd %s; %s start >/dev/null 2>&1' % (params['old_path'],
         ' '.join(get_serve_command(params)))
+
+
+@catcherror
+def disable_cronjob(params):
+    """Disable an existing cronjob/tab.
+
+    """
+
+    params = get_meta_params(params)
+    print 'Disabling the cronjob for the %s OLD' % params['old_name']
+    cmd = get_cronjob_cmd(params)
+    if crontab:
+        fail_msg = ('%sUnable to disable the OLD restart cronjob. We suggest'
+            ' you comment out the following line in your crontab:'
+            ' "*/1 * * * * %s".%s' % (
+            ANSI_WARNING, cmd, ANSI_ENDC))
+        cron  = crontab.CronTab(user=True)
+        iter = cron.find_command(cmd)
+        try:
+            job = next(iter)
+        except StopIteration:
+            print fail_msg
+            return False
+        job.enable(False)
+        if False == job.is_enabled():
+            params['actions'].append('cronjob disabled')
+            cron.write()
+            return True
+        else:
+            print fail_msg
+    else:
+        print ('%sPython-crontab is not installed. You should probably install'
+            ' it (e.g., via `easy_install python-crontab`) before you run this'
+            ' script again. For the OLD that has just been built, we suggest'
+            ' you comment out the following line in your crontab: "*/1 * * * * %s".%s' % (
+            ANSI_WARNING, cmd, ANSI_ENDC))
+    return False
 
 
 @catcherror
@@ -1434,6 +1478,13 @@ def destroy(params, global_state):
     print 'Done.'
 
 
+def get_meta_params(params):
+    params['old_path'] = os.path.join(params['apps_path'],
+        params['old_dir_name'])
+    params['db_name'] = params['old_dir_name']
+    return params
+
+
 def build(params, do_save_state=True):
     """Build an OLD, given `params`.
 
@@ -1444,9 +1495,7 @@ def build(params, do_save_state=True):
         ANSI_ENDC)
 
     params['old_port'] = get_next_available_port(params)
-    params['old_path'] = os.path.join(params['apps_path'],
-        params['old_dir_name'])
-    params['db_name'] = params['old_dir_name']
+    params = get_meta_params(params)
 
     print '\n\n'
     pprint.pprint(params)
@@ -1465,17 +1514,6 @@ def build(params, do_save_state=True):
     init_script(params)
     if do_save_state:
         save_state(params)
-
-    print '''
-- created directories
-- made config (.ini) file
-- created MySQL databse
-- edited the config (.ini) file
-- ran paster's setup-app to create the database tables
-- fixed the tag table's name column
-- served the old!
-- added the virtual host ...
-'''
 
     print ('The %s OLD is being served at %shttps://%s/%s%s.\nIts files are'
         ' stored at %s%s%s.' % (params['old_name'], ANSI_OKGREEN, params['host'],

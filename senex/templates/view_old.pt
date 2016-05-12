@@ -1,22 +1,53 @@
 <metal:macro use-macro="master">
   <metal:slot fill-slot="body">
-    <p tal:condition="logged_in" class="pull-right">
-      <a href="${request.application_url}/logout">Logout</a>
+
+    <h2>${old.human_name or old.name} OLD</h2>
+
+    <p class="old-controls">
+      <a tal:attributes="href edit_url" href="">Edit</a>
+      <a tal:condition="old.running"
+        href="${request.route_url('stop_old', oldname=old.name)}">Stop</a>
+      <a tal:condition="not old.running"
+        href="${request.route_url('start_old', oldname=old.name)}">Start</a>
     </p>
-    <div>
-      The details of the OLD called “${old.name}” will go here.
-    </div>
-    <p>
-      <a tal:attributes="href edit_url" href="">
-        Edit this OLD
-      </a>
-    </p>
-    <p>
-        Viewing <strong><span tal:replace="old.name">
-        OLD Name Goes Here</span></strong>
-    </p>
-    <p>You can return to the
-      <a href="${request.application_url}">Senex main page</a>.
-    </p>
+
+    <p tal:condition="msg" class="alert alert-info">${msg}</p>
+
+    <p tal:condition="old.running"><i class="ok fa fa-fw
+      fa-check-circle"></i>The ${old.name} OLD is being served at <a
+      target="_blank" href="${old.url}">${old.url}</a>.</p>
+
+    <p tal:condition="not old.running"><i class="error fa fa-fw
+      fa-exclamation-triangle"></i>The ${old.name} OLD should be being served
+      at <a target="_blank" href="${old.url}">${old.url}</a>; however, it has
+      been stopped, i.e., turned off.</p>
+
+    <table>
+      <tbody>
+
+        <tr>
+          <td class="label-cell">URL:</td>
+          <td><a href="${old.url}" target="_blank">${old.url}</a></td>
+        </tr>
+
+        <tr>
+          <td class="label-cell">Built:</td>
+          <td tal:condition="old.built"><i class="ok fa fa-fw
+            fa-check-circle"></i></td>
+          <td tal:condition="not old.built"><i class="error fa fa-fw
+            fa-times-circle"></i></td>
+        </tr>
+
+        <tr>
+          <td class="label-cell">Running:</td>
+          <td tal:condition="old.running"><i class="ok fa fa-fw
+            fa-check-circle"></i></td>
+          <td tal:condition="not old.running"><i class="error fa fa-fw
+            fa-times-circle"></i></td>
+        </tr>
+
+      </tbody>
+    </table>
+
   </metal:slot>
 </metal:macro>

@@ -57,13 +57,38 @@ class OLD(Base):
 
     __tablename__ = u'olds'
     id = Column(Integer, primary_key=True)
+
+    # Name of the OLD. No spaces. Should be something short, like an ISO 639-3
+    # language code. Can't be changed once created.
     name = Column(Text, unique=True)
+
+    # Name of the OLD's directory, MySQL database and path in its URL. Created
+    # by concatenating the OLD's name with "old", e.g., "blaold".
     dir_name = Column(Text, unique=True)
+
+    # A name for the OLD that is more descriptive. E.g., "Blackfoot".
     human_name = Column(Text)
+
+    # The URL where the OLD is being served. This is Senex's `host` value
+    # followed by `dir_name`. E.g.,
+    # https://app.onlinelinguisticdatabase.org/blaold/
     url = Column(Text, default='')
-    built = Column(Boolean, default=False)
+
+    # The port that paster is serving this OLD on. Something like 9000.
     port = Column(Text, unique=True)
+
+    # True if the OLD has been successfully built.
+    built = Column(Boolean, default=False)
+
+    # Last error message, if any, from the last build attempt.
+    built_error_msg = Column(Text)
+
+    # True if the OLD is running.
     running = Column(Boolean, default=False)
+
+    # Last error message, if any, from the last attempt to start or stop the
+    # OLD.
+    running_error_msg = Column(Text)
 
 
 class User(Base):
@@ -118,7 +143,7 @@ class SenexState(Base):
 
     # This is the username and password of the MySQL user that will be used to
     # create the OLDs.
-    mysql_user = Column(Unicode(255))
+    mysql_user = Column(Unicode(255), default=u'old')
     mysql_pwd = Column(Unicode(255))
 
     user_dir = os.path.expanduser('~')
@@ -132,12 +157,12 @@ class SenexState(Base):
     # This should be the full path to the directory where the OLDs will be
     # installed. The default should be something like the expansion of
     # ~/old-apps/, or similar.
-    default_apps_path = os.path.join(user_dir, DEFAULT_APPS_DIR)
+    default_apps_path = unicode(os.path.join(user_dir, DEFAULT_APPS_DIR))
     apps_path = Column(Unicode(255), default=default_apps_path)
 
     # The host name of the URL where the OLDs are being served, e.g., something
     # like www.myoldurl.com.
-    host = Column(Unicode(255))
+    host = Column(Unicode(255), default=u'app.onlinelinguisticdatabase.org')
 
     # The server that we are using: either "apache" or "nginx".
     server = Column(Text, default='nginx')
@@ -150,16 +175,17 @@ class SenexState(Base):
     default_ssl_path = os.path.join(user_dir, DEFAULT_SSL_DIR)
 
     # Path to the SSL .crt file.
-    default_ssl_cert_path = os.path.join(default_ssl_path, u'olds.crt')
+    default_ssl_cert_path = unicode(os.path.join(default_ssl_path, u'server.crt'))
     ssl_crt_path = Column(Unicode(255), default=default_ssl_cert_path)
 
     # Path to the SSL .key file.
-    default_ssl_key_path = os.path.join(default_ssl_path, u'olds.key')
+    default_ssl_key_path = unicode(os.path.join(default_ssl_path, u'server.key'))
     ssl_key_path = Column(Unicode(255), default=default_ssl_key_path)
 
     # Path to the SSL .pem file, i.e., the intermediate certificate. Note:
-    # Apache calls this the `SSLCertificateChainFile`.
-    default_ssl_pem_path = os.path.join(default_ssl_path, u'olds.pem')
+    # Apache calls this the `SSLCertificateChainFile`. This is not required, at
+    # least for Nginx deployments it doesn't seem to be.
+    default_ssl_pem_path = unicode(os.path.join(default_ssl_path, u''))
     ssl_pem_path = Column(Unicode(255), default=default_ssl_pem_path)
 
     # These are the attributes of the `SenexState` model that are deemed
