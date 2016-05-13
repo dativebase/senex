@@ -1,7 +1,9 @@
 Senex
 ================================================================================
 
-Senex is a web application for high-level administration of
+.. image:: https://raw.githubusercontent.com/jrwdunham/senex/master/senex/static/senex-logo-2.png
+
+Senex is a `Pyramid`_ web application for high-level administration of
 `Online Linguistic Database (OLD)`_ applications.
 
 With Senex installed, you can install the OLD and its dependencies as well as
@@ -14,15 +16,15 @@ do the following:
 Requirements
 --------------------------------------------------------------------------------
 
-Right now Senex will only work with Ubuntu servers. Versions 10.04 and 14.04
-are being targeted.
+Right now Senex will only work with Ubuntu servers. Ubuntu 14.04 is the primary
+target, though Senex may also work with Ubuntu 10.04.
 
 The following must be installed in order for Senex to work. It can install the
 rest of its requirements and the rest of the OLD's requirements on its own.
 
 - Python 2.7
 - MySQL server
-- Apache 2
+- Apache 2 or Nginx
 - git
 
 The MySQL user specified via Senex's interface must exist and must have been
@@ -126,4 +128,6 @@ Create Senex's database tables and serve it::
 
 
 .. _`Online Linguistic Database (OLD)`: http://www.onlinelinguisticdatabase.org
+
+.. _`Pyramid`: http://www.pylonsproject.org/
 
