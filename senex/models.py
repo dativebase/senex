@@ -36,8 +36,10 @@ Base = declarative_base()
 
 
 # Default Server Settings Values
+USER_DIR = os.path.expanduser('~')
 DEFAULT_ENV_DIR = u'env-old'
 DEFAULT_APPS_DIR = u'oldapps'
+DEFAULT_APPS_PATH = unicode(os.path.join(USER_DIR, DEFAULT_APPS_DIR))
 DEFAULT_SSL_DIR = u'sslcert'
 DEFAULT_VH_PATH = u'/etc/nginx/sites-available/olds'
 
@@ -47,7 +49,7 @@ def get_default_dependency_state():
         get_dependencies({'env_dir': DEFAULT_ENV_DIR})))
 
 def get_default_server_state():
-    return unicode(json.dumps(get_server()))
+    return unicode(json.dumps(get_server({'apps_path': DEFAULT_APPS_PATH})))
 
 
 class OLD(Base):
@@ -146,8 +148,6 @@ class SenexState(Base):
     mysql_user = Column(Unicode(255), default=u'old')
     mysql_pwd = Column(Unicode(255))
 
-    user_dir = os.path.expanduser('~')
-
     # This should be the name of the directory in the user's home directory
     # where the virtual environment for the OLD is located.
     # Note/TODO: the `paster_path` var that installold.py should be
@@ -157,8 +157,7 @@ class SenexState(Base):
     # This should be the full path to the directory where the OLDs will be
     # installed. The default should be something like the expansion of
     # ~/old-apps/, or similar.
-    default_apps_path = unicode(os.path.join(user_dir, DEFAULT_APPS_DIR))
-    apps_path = Column(Unicode(255), default=default_apps_path)
+    apps_path = Column(Unicode(255), default=DEFAULT_APPS_PATH)
 
     # The host name of the URL where the OLDs are being served, e.g., something
     # like www.myoldurl.com.
@@ -172,7 +171,7 @@ class SenexState(Base):
     # file named `olds` located in /etc/apache2/sites-available/.
     vh_path = Column(Unicode(255), default=DEFAULT_VH_PATH)
 
-    default_ssl_path = os.path.join(user_dir, DEFAULT_SSL_DIR)
+    default_ssl_path = os.path.join(USER_DIR, DEFAULT_SSL_DIR)
 
     # Path to the SSL .crt file.
     default_ssl_cert_path = unicode(os.path.join(default_ssl_path, u'server.crt'))

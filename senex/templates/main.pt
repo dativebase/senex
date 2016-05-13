@@ -4,7 +4,7 @@
       <p>Senex is a high-level administrative tool for the <a
         href="http://www.onlinelinguisticdatabase.org">Online Linguistic
         Database (OLD)</a>. With Senex, you can create and destroy OLDs
-        and turn existing ones on and off. You can also use Senex to install
+        and turn existing OLDs on and off. You can also use Senex to install
         the OLD and its dependencies,
       </p>
 
@@ -65,6 +65,10 @@
           <li>
             <label class="setting-label" for="os">Total RAM</label>
             <div class="setting-display" name="os">${server['ram']}</div>
+          </li>
+          <li tal:condition="server.get('disk_space_available')">
+            <label class="setting-label" for="os">Disk Space Available</label>
+            <div class="setting-display" name="os">${server.get('disk_space_available')}</div>
           </li>
         </ul>
 

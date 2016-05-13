@@ -105,8 +105,8 @@ def get_core_dependencies(server_settings):
 
 
 def create_new_state(previous_state=None):
-    """Create a new Senex state model in our db and return it as a 2-tuple of
-    `server_state` and `dependency_state`.
+    """Create a new Senex state model in our db and return it as a 3-tuple of
+    `server_state`, `dependency_state`, and `state_settings`.
 
     """
 
@@ -114,10 +114,10 @@ def create_new_state(previous_state=None):
     if previous_state:
         for attr in new_state.settings_attrs:
             setattr(new_state, attr, getattr(previous_state, attr))
-    server_state = get_server()
     new_state_settings = new_state.get_settings()
+    server_state = get_server(new_state_settings)
     dependency_state = get_dependencies(new_state_settings)
-    new_state.server_state = unicode(json.dumps(get_server()))
+    new_state.server_state = unicode(json.dumps(get_server(new_state_settings)))
     new_state.dependency_state = unicode(json.dumps(dependency_state))
     new_state.last_state_check = datetime.datetime.utcnow()
     DBSession.add(new_state)
@@ -180,7 +180,7 @@ def update_settings(request):
     if changed:
         new_state_settings = new_senex_state.get_settings()
         dependency_state = get_dependencies(new_state_settings)
-        new_senex_state.server_state = unicode(json.dumps(get_server()))
+        new_senex_state.server_state = unicode(json.dumps(get_server(new_state_settings)))
         new_senex_state.dependency_state = unicode(json.dumps(dependency_state))
         new_senex_state.last_state_check = datetime.datetime.utcnow()
         DBSession.add(new_senex_state)

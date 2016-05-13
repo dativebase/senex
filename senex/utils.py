@@ -118,8 +118,16 @@ def get_pil_version(params):
     python_path = get_python_path(params)
     if os.path.isfile(python_path):
         stdout = shell([python_path, '-c', stmts])
-        if stdout.strip():
-            return stdout.strip()
+        resp = stdout.strip()
+        if resp:
+            if resp.startswith('Traceback'):
+                stmts = 'import PIL; print PIL.VERSION'
+                stdout = shell([python_path, '-c', stmts])
+                resp = stdout.strip()
+                if resp:
+                    return resp
+            else:
+                return resp
     return ''
 
 
@@ -149,18 +157,42 @@ def get_available_memory():
                 return ''
         return ''
     elif system == 'Linux':
-        stdout = shell(['free', '-b'])
+        stdout = shell(['free', '-g'])
         if stdout.strip():
             try:
                 resp = stdout.strip()
                 for line in resp.split('\n'):
-                    if line.startswith('Swap:'):
-                        return pretty_print_bytes(int(line.split()[1]))
+                    if line.startswith('Mem:'):
+                        return '%sGB' % line.split()[1]
             except:
                 return ''
         return ''
     else:
         return ''
+
+
+def get_disk_space(apps_path):
+    """Return available disk space, in GB, in the dir where the OLD
+    applications are stored.
+
+    """
+
+    if not apps_path:
+        return ''
+    if not os.path.isdir(apps_path):
+        return ''
+    system = platform.system()
+    if system == 'Linux':
+        stdout = shell(['df', '-h', apps_path])
+        resp = stdout.strip()
+        if resp:
+            try:
+                return resp.split('\n')[1].split()[3]
+            except:
+                return ''
+        return ''
+    return ''
+
 
 
 def pretty_print_bytes(num_bytes):
@@ -266,12 +298,12 @@ def libmagic_installed():
     return bool(shell(['man', 'libmagic']))
 
 
-def get_server():
+def get_server(settings):
     os, os_version = get_os_and_version()
     return {
         'os': os,
         'os_version': os_version,
-        # 'disk_space_available': None,
+        'disk_space_available': get_disk_space(settings['apps_path']),
         'ram': get_available_memory()
         }
 
