@@ -1,9 +1,11 @@
 import cgi
+import logging
 import re
 import pprint
 import json
 import datetime
 import os
+import pprint
 import string
 
 from .buildold import (
@@ -51,6 +53,9 @@ from .models import (
     )
 
 from worker import worker_q
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 # Human-readable settings labels.
@@ -198,9 +203,10 @@ def get_warnings(server_state, dependency_state, settings):
     warnings = {}
 
     if (server_state.get('os') != 'Ubuntu Linux' or
-        server_state.get('os_version', '')[:5] not in ('14.04', '10.04')):
+        # server_state.get('os_version', '')[:5] not in ('14.04', '10.04')):
+        server_state.get('os_version', '')[:5] not in ('16.04', '14.04', '10.04')):
         warnings['server'] = ('Senex is only known to work with Ubuntu Linux'
-            ' 14.04 and 10.04.')
+            ' 16.04, 14.04 and 10.04.')
 
     core_dependencies = get_core_dependencies(settings)
     for dependency in dependency_state:
@@ -487,6 +493,8 @@ def add_old(request):
 
     """
 
+    LOGGER.info('add_old called')
+
     if 'form.submitted' in request.params:
         name = request.params['name'].strip()
         dir_name = get_dir_name_from_old_name(name)
@@ -494,11 +502,18 @@ def add_old(request):
         old = OLD(name=name, dir_name=dir_name, human_name=human_name)
         errors = validate_old(old)
         if errors:
+            LOGGER.info('Errors generated when attempting to validate OLD %s'
+                        ' for creation', old.name)
+            LOGGER.info(pprint.pformat(errors))
             return dict(old=old, errors=errors,
                 logged_in=request.authenticated_userid,
                 save_url=request.route_url('add_old'))
         build_params, warnings = get_build_params_and_warnings(old)
-        if not warnings:
+        if warnings:
+            LOGGER.info('Warnings generated when attempting to build OLD %s',
+                        old.name)
+            LOGGER.info(pprint.pformat(warnings))
+        else:
             try:
                 existing_olds = DBSession.query(OLD).all()
                 old.running = True
@@ -506,14 +521,15 @@ def add_old(request):
                 build_params['existing_olds'] = existing_olds
                 url, port = build(build_params, False)
             except SystemExit as e:
-                print ('This error occurred when attempting to build the OLD'
-                    ' %s: %s' % (old.name, e))
+                LOGGER.exception('An error occurred when attempting to build'
+                    ' the OLD %s', old.name)
                 old.running = False
             except Exception as e:
-                print ('This error occurred when attempting to build the OLD'
-                    ' %s: %s' % (old.name, e))
+                LOGGER.exception('An error occurred when attempting to build'
+                    ' the OLD %s', old.name)
                 old.running = False
             else:
+                LOGGER.info('OLD %s successfully built', old.name)
                 old.built = True
                 old.url = url
                 old.port = port
